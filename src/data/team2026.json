@@ -1,0 +1,51 @@
+{
+    "president": {
+        "name": "Rtr. Samyak R",
+        "role": "President (2026–27)",
+        "photo": "/images/team/samyak.jpg",
+        "quote": "Building an inclusive community where passion meets impactful action.",
+        "linkedin": "https://linkedin.com/in/rohandeshmukh",
+        "instagram": "https://instagram.com/rohan_deshmukh"
+    },
+    "secretary": {
+        "name": "Rtr. Sharanabasappa Biradar",
+        "role": "Secretary (2026–27)",
+        "photo": "/images/team/sharanabasappa.jpg",
+        "quote": "Streamlining operations to let our service initiatives shine.",
+        "linkedin": "https://www.linkedin.com/in/sharanabasappa-biradar-108164358/",
+        "instagram": "https://instagram.com/sharanu_39"
+    },
+    "vice_president": {
+        "name": "Rtr. Sushanth Gowda S",
+        "role": "Vice President (2026–27)",
+        "photo": "/images/team/sushanth.jpg",
+        "quote": "Leading by example with integrity and vision",
+        "linkedin": "https://www.linkedin.com/in/sushanth-gowda-s-940111243/",
+        "instagram": "https://instagram.com/i_m_sushanth_gowda"
+    },
+    "joint_secretary": {
+        "name": "Rtr. Himashree B",
+        "role": "Joint Secretary (2026–27)",
+        "photo": "/images/team/himashree.jpg",
+        "quote": "Leading by example with integrity and vision",
+        "linkedin": "https://www.linkedin.com/in",
+        "instagram": "https://instagram.com"
+    },
+    "treasurer": {
+        "name": "Rtr. Vaishnavi S",
+        "role": "Treasurer (2026–27)",
+        "photo": "/images/team/vaishnavi.jpg",
+        "quote": "Leading by example with integrity and vision",
+        "linkedin": "https://www.linkedin.com/in",
+        "instagram": "https://instagram.com"
+    },
+    "sergeant_at_arms": {
+        "name": "Rtr. Mohammad Hassaan Jawad",
+        "role": "Sergeant-at-Arms (2026–27)",
+        "photo": "/images/team/Jawad.jpg",
+        "quote": "Leading by example with integrity and vision",
+        "linkedin": "https://www.linkedin.com/in",
+        "instagram": "https://instagram.com"
+    },
+    "visionStatement": "In 2026–27, our focus is on sustainable social impact and empowering every individual member to lead. We are expanding our digital literacy drives into 10 new schools and deepening our partnership with Rotary District 3191 to foster global youth exchanges."
+}

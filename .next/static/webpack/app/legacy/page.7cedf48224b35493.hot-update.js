@@ -1,0 +1,22 @@
+"use strict";
+/*
+ * ATTENTION: An "eval-source-map" devtool has been used.
+ * This devtool is neither made for production nor for readable output files.
+ * It uses "eval()" calls to create a separate source file with attached SourceMaps in the browser devtools.
+ * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
+ * or disable the default devtool with "devtool: false".
+ * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
+ */
+self["webpackHotUpdate_N_E"]("app/legacy/page",{
+
+/***/ "(app-pages-browser)/./src/data/legacyData.json":
+/*!**********************************!*\
+  !*** ./src/data/legacyData.json ***!
+  \**********************************/
+/***/ (function(module, __unused_webpack_exports, __webpack_require__) {
+
+module.exports = /*#__PURE__*/JSON.parse('[{"year":"2025–26","theme":"Unite for Good","president":"Rtr. Akhilesh Raja","presidentImage":"/images/legacy/president_2526.png","secretary":"Rtr. Tejas S","teamPhoto":"/images/legacy/last_year_team.jpeg","coreTeam":[{"name":"Rtr. Akhilesh Raja","role":"President"},{"name":"Rtr. Tejas S","role":"Secretary"},{"name":"Rtr. Akanksha Priyam","role":"Vice President"},{"name":"Rtr. Madhav K","role":"Treasurer"},{"name":"Rtr. Saanvy Azad P","role":"Joint Secretary"}],"highlights":[{"title":"Rotaract Youth Leadership Awards (RYLA)","category":"Youth Service","description":"Hosted 250+ delegates across Karnataka for a 3-day leadership summit.","image":"/images/legacy/2025-ryla.jpg"},{"title":"Mega Blood Donation Drive","category":"Community Service","description":"Collected 450+ units of blood in collaboration with Rotary Blood Bank.","image":"/images/legacy/2025-blood-drive.jpg"}]},{"year":"2024–25","theme":"Empower & Elevate","president":"Rtr. Vinit Jain","presidentImage":"/images/legacy/president_2425.png","secretary":"Rtr. Aman Agarwal","teamPhoto":"/images/legacy/2024-team.jpg","coreTeam":[{"name":"Rtr. Vinit Jain","role":"President"},{"name":"Rtr. Aman Agarwal","role":"Secretary"},{"name":"Siddharth Mehta","role":"Vice President"}],"highlights":[{"title":"Project Vidyadaan","category":"Community Service","description":"Donated computer systems and books to 5 rural schools around Bengaluru.","image":"/images/legacy/2024-vidyadaan.jpg"}]},{"year":"2023–24","theme":"Service Beyond Self","president":"Rtr. Advaith","presidentImage":"/images/legacy/president_2324.png","secretary":"Rtr. Tushar","teamPhoto":"/images/legacy/2023-team.jpg","coreTeam":[{"name":"Rtr. Advaith","role":"President"}],"highlights":[]},{"year":"2022–23","theme":"Lead to Transform","president":"Varun Reddy","presidentImage":"/images/legacy/president_2223.png","secretary":"Kavya Murthy","teamPhoto":"/images/legacy/2022-team.jpg","coreTeam":[{"name":"Varun Reddy","role":"President"}],"highlights":[]},{"year":"2021–22","theme":"Hope in Action","president":"Rahul Verma","presidentImage":"/images/legacy/president_2122.png","secretary":"Sneha Shenoy","teamPhoto":"/images/legacy/2021-team.jpg","coreTeam":[{"name":"Rahul Verma","role":"President"}],"highlights":[]},{"year":"2020–21","theme":"Resilience & Renewal","president":"Atharv","presidentImage":"/images/legacy/president_2021.jpeg","secretary":"Meera Joshi","teamPhoto":"/images/legacy/2020-team.jpg","coreTeam":[{"name":"Atharv","role":"President"}],"highlights":[]},{"year":"2019–20","theme":"Together We Can","president":"Ashish","presidentImage":"/images/legacy/president_1920.jpeg","secretary":"Rhea Menon","teamPhoto":"/images/legacy/2019-team.jpg","coreTeam":[{"name":"Praveen Kumar","role":"President"}],"highlights":[]},{"year":"2018–19","theme":"Strive for Excellence","president":"Prajna","presidentImage":"/images/legacy/president_1819.jpeg","secretary":"Pooja Hegde","teamPhoto":"/images/legacy/2018-team.jpg","coreTeam":[{"name":"Manoj Deshmukh","role":"President"}],"highlights":[]},{"year":"2017–18","theme":"Building Bridges","president":"Shreyas N","presidentImage":"/images/legacy/president_1718.jpeg","secretary":"Divya Swaminathan","teamPhoto":"/images/legacy/2017-team.jpg","coreTeam":[{"name":"Shreyas N","role":"President"}],"highlights":[]},{"year":"2016–17","theme":"The Genesis","president":"Gautam Rao","presidentImage":"/images/legacy/president_portrait.png","secretary":"Tanya Agarwal","teamPhoto":"/images/legacy/2016-team.jpg","coreTeam":[{"name":"Gautam Rao","role":"Charter President"}],"highlights":[]}]');
+
+/***/ })
+
+});

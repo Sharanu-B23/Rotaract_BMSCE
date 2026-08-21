@@ -1,0 +1,120 @@
+{
+    "flagships": [
+        {
+            "id": "iTeach",
+            "name": "iTeach",
+            "yearsRunning": "10 Years Running",
+            "description": "Our flagship community healthcare initiative organized",
+            "image": "/images/showcase/iTeach.jpg",
+            "stats": "450+ Units Collected (2025)"
+        },
+        {
+            "id": "give-for-good",
+            "name": "Give For Good",
+            "yearsRunning": "4 Years Running",
+            "description": "An ongoing educational outreach program empowering underprivileged government schools with computer labs, library books, and weekend mentoring.",
+            "image": "/images/showcase/giveForGood.jpg",
+            "stats": "9,40,000/- Funds Raised"
+        },
+        {
+            "id": "kkd",
+            "name": "Khushiyon Ka Dabba",
+            "yearsRunning": "2 Years Running",
+            "description": "A flagship community outreach program dedicated to spreading joy and providing essential supplies to underserved communities during festive seasons.",
+            "image": "/images/showcase/kkd.jpg",
+            "stats": "100+ Dabbas Delivered"
+        },
+        {
+            "id": "kali-kannada",
+            "name": "  Kali Kannada",
+            "yearsRunning": "5 Years Running",
+            "description": "Our flagship community healthcare initiative organized",
+            "image": "/images/showcase/kalikannada.jpg",
+            "stats": ""
+        },
+        {
+            "id": "give-for-good",
+            "name": "Give For Good",
+            "yearsRunning": "4 Years Running",
+            "description": "An ongoing educational outreach program empowering underprivileged government schools with computer labs, library books, and weekend mentoring.",
+            "image": "/images/showcase/giveForGood.jpg",
+            "stats": "9,40,000/- Funds Raised"
+        },
+        {
+            "id": "kkd",
+            "name": "Khushiyon Ka Dabba",
+            "yearsRunning": "2 Years Running",
+            "description": "A flagship community outreach program dedicated to spreading joy and providing essential supplies to underserved communities during festive seasons.",
+            "image": "/images/showcase/kkd.jpg",
+            "stats": "100+ Dabbas Delivered"
+        }
+    ],
+    "events": [
+        {
+            "id": "onam-utsavam",
+            "title": "Onam Utsavam",
+            "date": "2025-07-17",
+            "formattedDate": "July 17, 2025",
+            "category": "Club Service",
+            "shortDescription": "A vibrant cultural celebration marking the beginning of the Rotaract year. Featuring traditional arts, music, and interactive games, Onam Utsavam brings the community together to share joy and cultural pride.",
+            "image": "/images/showcase/events/onamUtsavam.jpg",
+            "location": "BMSCE campus",
+            "impact": "175+ Participants"
+        },
+        {
+            "id": "placement-decode",
+            "title": "Placement Decode",
+            "date": "2025-11-04",
+            "formattedDate": "November 4, 2025",
+            "category": "Professional Dev",
+            "shortDescription": "Decoding the professional realm! A dynamic session that delved into resume building, interview strategies, and the nuances of corporate etiquette, equipping participants with essential skills for their future careers.",
+            "image": "/images/showcase/events/placementDecode.jpg",
+            "location": "Online",
+            "impact": "80+ Participants"
+        },
+        {
+            "id": "kits-of-care",
+            "title": "Kits Of Care",
+            "date": "2025-10-28",
+            "formattedDate": "October 28, 2025",
+            "category": "Community Service",
+            "shortDescription": "A heartwarming initiative dedicated to providing essential care packages to those in need. Through Kits of Care, we distribute hygiene products, food supplies, and other daily necessities, ensuring that vulnerable communities receive the support they deserve.",
+            "image": "/images/showcase/events/kitsOfCare.jpg",
+            "location": "Makkala Dhama Orphanage",
+            "impact": "120 Children Reached"
+        },
+        {
+            "id": "humans-of-rotaract",
+            "title": "Humans of Rotaract",
+            "date": "2026-01-18",
+            "formattedDate": "January 18, 2026",
+            "category": "Youth/Social",
+            "shortDescription": "A poignant photography-based project aimed at capturing and sharing the stories, dreams, and experiences of Rotaract members, fostering deeper connections and mutual understanding within our diverse community.",
+            "image": "/images/showcase/events/humansOfRotaract.jpg",
+            "location": "Instagram",
+            "impact": "10+ Members Featured"
+        },
+        {
+            "id": "cultural-exchange",
+            "title": "Indo-German Cultural Exchange",
+            "date": "2026-02-10",
+            "formattedDate": "February 10, 2026",
+            "category": "International Service",
+            "shortDescription": "Virtual fellowship session exploring cultural traditions and youth action with Rotaract Munich.",
+            "image": "/images/showcase/events/cultural.jpg",
+            "location": "Zoom / Online",
+            "impact": "60 International Peers"
+        },
+        {
+            "id": "project-vidya",
+            "title": "Project Vidya",
+            "date": "2026-03-05",
+            "formattedDate": "March 5, 2026",
+            "category": "Community Service",
+            "shortDescription": "An evening of icebreakers, musical performances, and team bonding for general body members.",
+            "image": "/images/showcase/events/projectVidya.jpg",
+            "location": "Makkala Dhama Orphanage",
+            "impact": "100+ Children Reached"
+        }
+    ]
+}
