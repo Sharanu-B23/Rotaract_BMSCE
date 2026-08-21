@@ -1,7 +1,9 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/legacy/page": "app/legacy/page.js",
   "/page": "app/page.js",
-  "/about/page": "app/about/page.js",
-  "/showcase/page": "app/showcase/page.js"
+  "/showcase/page": "app/showcase/page.js",
+  "/contact/page": "app/contact/page.js",
+  "/legacy/page": "app/legacy/page.js",
+  "/events/page": "app/events/page.js",
+  "/newsletter/page": "app/newsletter/page.js"
 }
