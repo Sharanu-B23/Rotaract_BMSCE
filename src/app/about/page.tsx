@@ -7,10 +7,7 @@ import {
     Users,
     Quote,
     Sparkles,
-    Target,
-    Heart,
-    Compass,
-    ShieldCheck
+    Compass
 } from "lucide-react";
 import { FaLinkedin as Linkedin, FaInstagram as Instagram } from "react-icons/fa";
 import teamDataRaw from "@/data/team2026.json";
@@ -27,6 +24,7 @@ interface TeamMember {
 
 export default function AboutPage() {
     const president: TeamMember = teamDataRaw.president;
+    const ipp: TeamMember = teamDataRaw.ipp;
     const secretary: TeamMember = teamDataRaw.secretary;
     const vice_president: TeamMember = teamDataRaw.vice_president;
     const joint_secretary: TeamMember = teamDataRaw.joint_secretary;
@@ -35,6 +33,7 @@ export default function AboutPage() {
     const visionStatement: string = teamDataRaw.visionStatement;
 
     const remainingMembers: TeamMember[] = [
+        ipp,
         secretary,
         vice_president,
         joint_secretary,
@@ -50,7 +49,7 @@ export default function AboutPage() {
                 <div className="max-w-6xl mx-auto text-center space-y-4">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-medium text-rotaract-gold">
                         <Users className="w-4 h-4" />
-                        <span>Leadership & Chapter Vision</span>
+                        <span>Leadership & Vision</span>
                     </div>
 
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold font-heading tracking-tight">
@@ -68,10 +67,10 @@ export default function AboutPage() {
                 {/* ================= VISION 2026–27 & PRESIDENT SECTION ================= */}
                 <section className="bg-white rounded-3xl border border-slate-200 p-8 md:p-12 shadow-sm relative overflow-hidden">
                     <div className="max-w-5xl mx-auto space-y-8">
-                        
+
                         {/* President Photo & Vision Quote Layout */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 items-center">
-                            
+
                             {/* President Photo (Left) */}
                             <div className="md:col-span-4 flex flex-col items-center">
                                 <div className="relative w-48 h-56 sm:w-56 sm:h-64 md:w-full md:h-72 rounded-2xl overflow-hidden shadow-md border-2 border-rotaract-gold/30 bg-slate-50 group">
@@ -116,25 +115,6 @@ export default function AboutPage() {
                                 </div>
                             </div>
 
-                        </div>
-
-                        {/* Core Values Strip */}
-                        <div className="pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                            <div className="p-4 rounded-xl bg-rotaract-surface border border-slate-100">
-                                <Target className="w-5 h-5 text-rotaract-cranberry mx-auto mb-2" />
-                                <h4 className="font-bold text-xs text-rotaract-navy uppercase tracking-wider">Leadership</h4>
-                                <p className="text-[11px] text-slate-500 mt-1">Nurturing ethical student leaders</p>
-                            </div>
-                            <div className="p-4 rounded-xl bg-rotaract-surface border border-slate-100">
-                                <Heart className="w-5 h-5 text-rotaract-cranberry mx-auto mb-2" />
-                                <h4 className="font-bold text-xs text-rotaract-navy uppercase tracking-wider">Fellowship</h4>
-                                <p className="text-[11px] text-slate-500 mt-1">Building lifelong community bonds</p>
-                            </div>
-                            <div className="p-4 rounded-xl bg-rotaract-surface border border-slate-100">
-                                <ShieldCheck className="w-5 h-5 text-rotaract-cranberry mx-auto mb-2" />
-                                <h4 className="font-bold text-xs text-rotaract-navy uppercase tracking-wider">Integrity</h4>
-                                <p className="text-[11px] text-slate-500 mt-1">Transparency in service execution</p>
-                            </div>
                         </div>
                     </div>
                 </section>

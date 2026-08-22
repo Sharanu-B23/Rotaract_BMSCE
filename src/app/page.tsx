@@ -8,7 +8,8 @@ import {
     Handshake,
     ArrowRight,
     Award,
-    Sparkles
+    Target,
+    Compass
 } from "lucide-react";
 import StatCounter from "@/components/StatCounter";
 
@@ -32,11 +33,6 @@ export default function HomePage() {
 
                 {/* Hero Content */}
                 <div className="relative z-10 max-w-4xl mx-auto px-6 text-center text-white">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-6 text-xs md:text-sm font-medium text-rotaract-gold">
-                        <Sparkles className="w-4 h-4" />
-                        <span>Rotary District 3191 • BMSCE Chapter</span>
-                    </div>
-
                     <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold font-heading tracking-tight leading-tight mb-6">
                         Fellowship Through <br className="hidden sm:inline" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-rotaract-gold via-white to-rotaract-cranberry">
@@ -97,34 +93,26 @@ export default function HomePage() {
                         </div>
                     </div>
 
-                    {/* Right Cards / Badges */}
-                    <div className="lg:col-span-5 bg-white p-8 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-                        <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-100">
-                            <div className="w-16 h-16 relative flex-shrink-0">
-                                <Image
-                                    src="/images/rotary-wheel.webp"
-                                    alt="Rotary International Badge"
-                                    fill
-                                    className="object-contain"
-                                />
+                    {/* Right Cards / Mission & Vision */}
+                    <div className="lg:col-span-5 bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                        <div className="p-5 rounded-xl bg-rotaract-surface border border-slate-100 space-y-2">
+                            <div className="flex items-center gap-2 text-rotaract-cranberry font-bold text-sm uppercase tracking-wider">
+                                <Target className="w-4 h-4" />
+                                <span>Our Mission</span>
                             </div>
-                            <div>
-                                <h3 className="font-heading font-bold text-rotaract-navy text-lg">
-                                    Rotary International Affiliated
-                                </h3>
-                                <p className="text-xs text-slate-500 font-body">
-                                    District 3191 • Sponsored by Rotary Club of Banashankari
-                                </p>
-                            </div>
+                            <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-light">
+                                To provide young adults with opportunities to enhance knowledge and skills for personal development, address physical and social needs of communities, and promote better relations worldwide through impactful service initiatives.
+                            </p>
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="p-4 rounded-xl bg-rotaract-surface border border-slate-100">
-                                <h4 className="font-semibold text-rotaract-navy text-sm mb-1">Our Mission</h4>
-                                <p className="text-xs text-slate-600 leading-relaxed font-light">
-                                    To provide young adults with opportunities to enhance knowledge and skills for personal development, address community physical and social needs, and promote better relations worldwide.
-                                </p>
+                        <div className="p-5 rounded-xl bg-rotaract-surface border border-slate-100 space-y-2">
+                            <div className="flex items-center gap-2 text-rotaract-navy font-bold text-sm uppercase tracking-wider">
+                                <Compass className="w-4 h-4" />
+                                <span>Our Vision</span>
                             </div>
+                            <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-light">
+                                To empower youth through self-development and fellowship, creating ethical student leaders dedicated to impactful community service and sustainable positive change.
+                            </p>
                         </div>
                     </div>
 

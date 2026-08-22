@@ -72,7 +72,7 @@ export default function Navbar() {
                             className={`text-[10px] font-medium tracking-wider uppercase transition-colors ${isScrolled ? "text-slate-500" : "text-slate-300"
                                 }`}
                         >
-                            District 3191
+                            RI District 3191
                         </span>
                     </div>
                 </Link>

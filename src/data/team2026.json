@@ -7,9 +7,17 @@
         "linkedin": "https://linkedin.com/in/rohandeshmukh",
         "instagram": "https://instagram.com/rohan_deshmukh"
     },
+    "ipp": {
+        "name": "IPP. Rtr. Akhilesh R",
+        "role": "Immediate Past President",
+        "photo": "/images/legacy/president_2526.png",
+        "quote": "Guiding with experience to empower the next generation of leaders.",
+        "linkedin": "https://www.linkedin.com/in",
+        "instagram": "https://instagram.com"
+    },
     "secretary": {
         "name": "Rtr. Sharanabasappa Biradar",
-        "role": "Secretary (2026–27)",
+        "role": "Secretary",
         "photo": "/images/team/sharanabasappa.jpg",
         "quote": "Streamlining operations to let our service initiatives shine.",
         "linkedin": "https://www.linkedin.com/in/sharanabasappa-biradar-108164358/",
@@ -17,7 +25,7 @@
     },
     "vice_president": {
         "name": "Rtr. Sushanth Gowda S",
-        "role": "Vice President (2026–27)",
+        "role": "Vice President",
         "photo": "/images/team/sushanth.jpg",
         "quote": "Leading by example with integrity and vision",
         "linkedin": "https://www.linkedin.com/in/sushanth-gowda-s-940111243/",
@@ -25,7 +33,7 @@
     },
     "joint_secretary": {
         "name": "Rtr. Himashree B",
-        "role": "Joint Secretary (2026–27)",
+        "role": "Joint Secretary",
         "photo": "/images/team/himashree.jpg",
         "quote": "Leading by example with integrity and vision",
         "linkedin": "https://www.linkedin.com/in",
@@ -33,7 +41,7 @@
     },
     "treasurer": {
         "name": "Rtr. Vaishnavi S",
-        "role": "Treasurer (2026–27)",
+        "role": "Treasurer",
         "photo": "/images/team/vaishnavi.jpg",
         "quote": "Leading by example with integrity and vision",
         "linkedin": "https://www.linkedin.com/in",
@@ -41,7 +49,7 @@
     },
     "sergeant_at_arms": {
         "name": "Rtr. Mohammad Hassaan Jawad",
-        "role": "Sergeant-at-Arms (2026–27)",
+        "role": "Sergeant-at-Arms",
         "photo": "/images/team/Jawad.jpg",
         "quote": "Leading by example with integrity and vision",
         "linkedin": "https://www.linkedin.com/in",
