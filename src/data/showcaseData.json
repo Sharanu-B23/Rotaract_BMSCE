@@ -22,11 +22,11 @@
             "yearsRunning": "Since 2 Years",
             "description": "A flagship community outreach program dedicated to spreading joy and providing essential supplies to underserved communities during festive seasons.",
             "image": "/images/showcase/kkd.jpeg",
-            "stats": "100+ Dabbas Delivered"
+            "stats": "500+ Dabbas Delivered"
         },
         {
             "id": "kali-kannada",
-            "name": "  Kali Kannada",
+            "name": "Kali Kannada",
             "yearsRunning": "Since 5 Years",
             "description": "Our flagship community healthcare initiative organized",
             "image": "/images/showcase/kalikannada.jpeg",
@@ -51,6 +51,17 @@
             "shortDescription": "A vibrant cultural celebration marking the beginning of the Rotaract year. Featuring traditional arts, music, and interactive games, Onam Utsavam brings the community together to share joy and cultural pride.",
             "image": "/images/showcase/events/onamUtsavam.jpeg",
             "location": "BMSCE campus",
+            "impact": "175+ Participants"
+        },
+        {
+            "id": "childrens-day",
+            "title": "Children's Day",
+            "date": "2025-11-14",
+            "formattedDate": "November 14, 2025",
+            "category": "iTeach",
+            "shortDescription": "A day filled with fun, frolic, and games for the children of the community.",
+            "image": "/images/showcase/events/childrensDay.jpeg",
+            "location": "Vinayaka Vidya Samsthe",
             "impact": "175+ Participants"
         },
         {

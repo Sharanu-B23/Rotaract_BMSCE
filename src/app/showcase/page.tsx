@@ -42,7 +42,9 @@ const CATEGORIES = [
     "Professional Dev",
     "Club Service",
     "International Service",
-    "Youth/Social",
+    "Public Image",
+    "S.P.A.W",
+    "iTeach"
 ];
 
 export default function ShowcasePage() {
@@ -162,8 +164,8 @@ export default function ShowcasePage() {
                                         key={cat}
                                         onClick={() => setSelectedCategory(cat)}
                                         className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${isActive
-                                                ? "bg-rotaract-navy text-white shadow-md shadow-rotaract-navy/20"
-                                                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                                            ? "bg-rotaract-navy text-white shadow-md shadow-rotaract-navy/20"
+                                            : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
                                             }`}
                                     >
                                         {cat}

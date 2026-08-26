@@ -18,8 +18,8 @@ interface TeamMember {
     role: string;
     photo: string;
     quote: string;
-    linkedin: string;
-    instagram: string;
+    linkedin?: string;
+    instagram?: string;
 }
 
 export default function AboutPage() {
@@ -87,12 +87,16 @@ export default function AboutPage() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 mt-3 text-slate-400">
-                                    <Link href={president.linkedin} target="_blank" className="p-1.5 rounded-full hover:bg-slate-100 hover:text-rotaract-navy transition-colors" aria-label="LinkedIn">
-                                        <Linkedin className="w-4 h-4" />
-                                    </Link>
-                                    <Link href={president.instagram} target="_blank" className="p-1.5 rounded-full hover:bg-slate-100 hover:text-rotaract-cranberry transition-colors" aria-label="Instagram">
-                                        <Instagram className="w-4 h-4" />
-                                    </Link>
+                                    {president.linkedin && (
+                                        <Link href={president.linkedin} target="_blank" className="p-1.5 rounded-full hover:bg-slate-100 hover:text-rotaract-navy transition-colors" aria-label="LinkedIn">
+                                            <Linkedin className="w-4 h-4" />
+                                        </Link>
+                                    )}
+                                    {president.instagram && (
+                                        <Link href={president.instagram} target="_blank" className="p-1.5 rounded-full hover:bg-slate-100 hover:text-rotaract-cranberry transition-colors" aria-label="Instagram">
+                                            <Instagram className="w-4 h-4" />
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
 
@@ -170,12 +174,16 @@ export default function AboutPage() {
                                 </div>
 
                                 <div className="flex items-center justify-center gap-3 pt-2 text-slate-400 border-t border-slate-100/60 mt-4">
-                                    <Link href={member.linkedin} target="_blank" className="hover:text-rotaract-navy transition-colors" aria-label="LinkedIn">
-                                        <Linkedin className="w-4 h-4" />
-                                    </Link>
-                                    <Link href={member.instagram} target="_blank" className="hover:text-rotaract-cranberry transition-colors" aria-label="Instagram">
-                                        <Instagram className="w-4 h-4" />
-                                    </Link>
+                                    {member.linkedin && (
+                                        <Link href={member.linkedin} target="_blank" className="hover:text-rotaract-navy transition-colors" aria-label="LinkedIn">
+                                            <Linkedin className="w-4 h-4" />
+                                        </Link>
+                                    )}
+                                    {member.instagram && (
+                                        <Link href={member.instagram} target="_blank" className="hover:text-rotaract-cranberry transition-colors" aria-label="Instagram">
+                                            <Instagram className="w-4 h-4" />
+                                        </Link>
+                                    )}
                                 </div>
                             </motion.div>
                         ))}

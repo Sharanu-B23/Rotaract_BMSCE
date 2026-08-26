@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,15 +31,27 @@ interface UpcomingEvent {
     totalSpots: number;
     deadline: string;
     category: string;
+    audience?: "everyone" | "members" | "ri_members";
 }
 
-const upcomingEvents = upcomingEventsRaw as UpcomingEvent[];
-
 export default function UpcomingEventsPage() {
+    const [eventsList, setEventsList] = useState<UpcomingEvent[]>(upcomingEventsRaw as UpcomingEvent[]);
     const [activeModalEvent, setActiveModalEvent] = useState<UpcomingEvent | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+
+    // Load admin created/updated events from localStorage on mount
+    useEffect(() => {
+        const storedEvents = localStorage.getItem("rotaract_events_data");
+        if (storedEvents) {
+            try {
+                setEventsList(JSON.parse(storedEvents));
+            } catch (e) {
+                setEventsList(upcomingEventsRaw as UpcomingEvent[]);
+            }
+        }
+    }, []);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -48,6 +60,8 @@ export default function UpcomingEventsPage() {
         phone: "",
         department: "",
         academicYear: "1st Year",
+        memberId: "",
+        riMemberId: "",
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -71,11 +85,14 @@ export default function UpcomingEventsPage() {
         try {
             const payload = {
                 eventTitle: activeModalEvent?.title,
+                audienceEligibility: activeModalEvent?.audience || "everyone",
                 fullName: formData.fullName,
                 email: formData.email,
                 phone: formData.phone,
                 academicYear: formData.academicYear,
                 department: formData.department,
+                memberId: activeModalEvent?.audience === "members" ? formData.memberId : undefined,
+                riMemberId: activeModalEvent?.audience === "ri_members" ? formData.riMemberId : undefined,
             };
 
             // Send payload to Google Apps Script Web App
@@ -108,6 +125,8 @@ export default function UpcomingEventsPage() {
             phone: "",
             department: "",
             academicYear: "1st Year",
+            memberId: "",
+            riMemberId: "",
         });
     };
 
@@ -135,9 +154,9 @@ export default function UpcomingEventsPage() {
             {/* ================= MAIN CONTENT ================= */}
             <main className="max-w-6xl mx-auto px-6 pt-16">
 
-                {upcomingEvents.length > 0 ? (
+                {eventsList.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                        {upcomingEvents.map((event) => {
+                        {eventsList.map((event) => {
                             const isLowSpots = event.spotsLeft <= 20;
                             return (
                                 <div
@@ -158,19 +177,16 @@ export default function UpcomingEventsPage() {
                                                 <span className="text-[11px] font-semibold bg-rotaract-navy/90 text-white px-3 py-1 rounded-full backdrop-blur-sm">
                                                     {event.category}
                                                 </span>
-                                            </div>
-
-                                            {/* Spots Left Indicator */}
-                                            <div className="absolute bottom-3 right-3">
-                                                <span
-                                                    className={`text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 backdrop-blur-md ${isLowSpots
-                                                            ? "bg-rose-500 text-white animate-pulse"
-                                                            : "bg-emerald-500 text-white"
-                                                        }`}
-                                                >
-                                                    <Users className="w-3.5 h-3.5" />
-                                                    {event.spotsLeft} Spots Left
-                                                </span>
+                                                {event.audience === "members" && (
+                                                    <span className="text-[11px] font-semibold bg-amber-500/90 text-white px-3 py-1 rounded-full backdrop-blur-sm">
+                                                        🔒 Members Only
+                                                    </span>
+                                                )}
+                                                {event.audience === "ri_members" && (
+                                                    <span className="text-[11px] font-semibold bg-purple-600/90 text-white px-3 py-1 rounded-full backdrop-blur-sm">
+                                                        🎖️ RI Members Only
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 
@@ -229,11 +245,11 @@ export default function UpcomingEventsPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <h3 className="text-2xl font-bold font-heading text-rotaract-navy">
-                                No Active Registrations Right Now
+                            <h3 className="text-2xl md:text-3xl font-bold font-heading text-rotaract-navy">
+                                To Be Announced Soon
                             </h3>
-                            <p className="text-slate-500 text-sm leading-relaxed">
-                                We are currently planning our next big initiative! Subscribe to our newsletter to receive an early registration link as soon as events go live.
+                            <p className="text-slate-500 text-sm md:text-base leading-relaxed">
+                                We are currently planning our next big initiative! Subscribe to our newsletter or check back later to get updates as soon as new events go live.
                             </p>
                         </div>
 
@@ -374,6 +390,43 @@ export default function UpcomingEventsPage() {
                                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry text-sm"
                                             />
                                         </div>
+
+                                        {/* Dynamic Membership ID Field based on Admin Choice */}
+                                        {activeModalEvent.audience === "members" && (
+                                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-1.5">
+                                                <label className="block text-xs font-bold text-amber-900 flex items-center justify-between">
+                                                    <span>Rotaract Membership ID *</span>
+                                                    <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md font-semibold">Required for Members</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="memberId"
+                                                    required
+                                                    placeholder="Enter your Rotaract Membership ID (e.g. ROT-2026-88)"
+                                                    value={formData.memberId}
+                                                    onChange={handleInputChange}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm bg-white"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {activeModalEvent.audience === "ri_members" && (
+                                            <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl space-y-1.5">
+                                                <label className="block text-xs font-bold text-purple-900 flex items-center justify-between">
+                                                    <span>Rotary International (RI) Membership ID *</span>
+                                                    <span className="text-[10px] bg-purple-200 text-purple-900 px-2 py-0.5 rounded-md font-semibold">Required for RI Members</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="riMemberId"
+                                                    required
+                                                    placeholder="Enter your official RI Membership ID"
+                                                    value={formData.riMemberId}
+                                                    onChange={handleInputChange}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-white"
+                                                />
+                                            </div>
+                                        )}
 
                                         <div className="pt-2">
                                             <button

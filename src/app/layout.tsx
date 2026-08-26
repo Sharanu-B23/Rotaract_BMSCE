@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins, Inter } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import GoogleProvider from "@/components/GoogleProvider";
 import "@/app/globals.css";
 
 const poppins = Poppins({
@@ -30,9 +31,11 @@ export default function RootLayout({
     return (
         <html lang="en" className={`${poppins.variable} ${inter.variable}`}>
             <body className="font-body bg-rotaract-surface text-slate-800 antialiased selection:bg-rotaract-cranberry selection:text-white">
-                <Navbar />
-                <main className="min-h-screen">{children}</main>
-                <Footer />
+                <GoogleProvider>
+                    <Navbar />
+                    <main className="min-h-screen">{children}</main>
+                    <Footer />
+                </GoogleProvider>
             </body>
         </html>
     );
