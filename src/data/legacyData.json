@@ -2,13 +2,13 @@
     {
         "year": "2025–26",
         "theme": "Unite for Good",
-        "president": "Rtr. Akhilesh Raja",
+        "president": "IPP. Rtr. Akhilesh R",
         "presidentImage": "/images/legacy/president_2526.png",
         "secretary": "Rtr. Tejas S",
         "teamPhoto": "/images/legacy/last_year_team.jpeg",
         "coreTeam": [
             {
-                "name": "Rtr. Akhilesh Raja",
+                "name": "Rtr. Akhilesh R",
                 "role": "President"
             },
             {
@@ -45,8 +45,8 @@
     },
     {
         "year": "2024–25",
-        "theme": "Empower & Elevate",
-        "president": "Rtr. Vinit Jain",
+        "theme": "Aurora - Guiding Lights of Service",
+        "president": "PP. Rtr. Vinit Jain",
         "presidentImage": "/images/legacy/president_2425.png",
         "secretary": "Rtr. Aman Agarwal",
         "teamPhoto": "/images/legacy/2024-team.jpg",
@@ -75,9 +75,8 @@
     },
     {
         "year": "2023–24",
-        "theme": "Service Beyond Self",
-        "president": "Rtr. Advaith",
-        "presidentImage": "/images/legacy/president_2324.png",
+        "president": "PP. Rtr. Advaith",
+        "presidentImage": "/images/legacy/president_2324.jpeg",
         "secretary": "Rtr. Tushar",
         "teamPhoto": "/images/legacy/2023-team.jpg",
         "coreTeam": [
@@ -89,30 +88,14 @@
         "highlights": []
     },
     {
-        "year": "2022–23",
-        "theme": "Lead to Transform",
-        "president": "Varun Reddy",
-        "presidentImage": "/images/legacy/president_2223.png",
+        "year": "2021–23",
+        "president": "PP. Rtr. Shreya M Gupta",
+        "presidentImage": "/images/legacy/president_2223.jpeg",
         "secretary": "Kavya Murthy",
         "teamPhoto": "/images/legacy/2022-team.jpg",
         "coreTeam": [
             {
-                "name": "Varun Reddy",
-                "role": "President"
-            }
-        ],
-        "highlights": []
-    },
-    {
-        "year": "2021–22",
-        "theme": "Hope in Action",
-        "president": "Rahul Verma",
-        "presidentImage": "/images/legacy/president_2122.png",
-        "secretary": "Sneha Shenoy",
-        "teamPhoto": "/images/legacy/2021-team.jpg",
-        "coreTeam": [
-            {
-                "name": "Rahul Verma",
+                "name": "PP. Rtr. Shreya M Gupta",
                 "role": "President"
             }
         ],
@@ -120,8 +103,7 @@
     },
     {
         "year": "2020–21",
-        "theme": "Resilience & Renewal",
-        "president": "Atharv",
+        "president": "PP. Rtr. Atharv",
         "presidentImage": "/images/legacy/president_2021.jpeg",
         "secretary": "Meera Joshi",
         "teamPhoto": "/images/legacy/2020-team.jpg",
@@ -135,8 +117,7 @@
     },
     {
         "year": "2019–20",
-        "theme": "Together We Can",
-        "president": "Ashish",
+        "president": "PP. Rtr. Ashish",
         "presidentImage": "/images/legacy/president_1920.jpeg",
         "secretary": "Rhea Menon",
         "teamPhoto": "/images/legacy/2019-team.jpg",
@@ -150,14 +131,13 @@
     },
     {
         "year": "2018–19",
-        "theme": "Strive for Excellence",
-        "president": "Prajna",
+        "president": "PP. Rtr. Prajna",
         "presidentImage": "/images/legacy/president_1819.jpeg",
-        "secretary": "Pooja Hegde",
+        "secretary": "",
         "teamPhoto": "/images/legacy/2018-team.jpg",
         "coreTeam": [
             {
-                "name": "Manoj Deshmukh",
+                "name": "PP. Rtr. Prajna",
                 "role": "President"
             }
         ],
@@ -165,8 +145,7 @@
     },
     {
         "year": "2017–18",
-        "theme": "Building Bridges",
-        "president": "Shreyas N",
+        "president": "PP. Rtr. Tejaswini",
         "presidentImage": "/images/legacy/president_1718.jpeg",
         "secretary": "Divya Swaminathan",
         "teamPhoto": "/images/legacy/2017-team.jpg",
@@ -180,14 +159,13 @@
     },
     {
         "year": "2016–17",
-        "theme": "The Genesis",
-        "president": "Gautam Rao",
-        "presidentImage": "/images/legacy/president_portrait.png",
+        "president": "PP. Rtr. Ajay Gopal",
+        "presidentImage": "/images/legacy/bhgdgh.png",
         "secretary": "Tanya Agarwal",
         "teamPhoto": "/images/legacy/2016-team.jpg",
         "coreTeam": [
             {
-                "name": "Gautam Rao",
+                "name": "PP. Rtr. Ajay Gopal",
                 "role": "Charter President"
             }
         ],

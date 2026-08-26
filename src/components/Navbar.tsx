@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ArrowRight, Sparkles } from "lucide-react";
+import { Menu, X, ArrowRight, Sparkles, UserCheck } from "lucide-react";
 
 const NAV_LINKS = [
     { href: "/", label: "Home" },
@@ -72,7 +72,7 @@ export default function Navbar() {
                             className={`text-[10px] font-medium tracking-wider uppercase transition-colors ${isScrolled ? "text-slate-500" : "text-slate-300"
                                 }`}
                         >
-                            District 3191
+                            RI District 3191
                         </span>
                     </div>
                 </Link>
@@ -103,11 +103,11 @@ export default function Navbar() {
                 {/* DESKTOP PERSISTENT CTA */}
                 <div className="hidden lg:flex items-center gap-4">
                     <Link
-                        href="/events"
-                        className="px-5 py-2.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 text-white text-xs xl:text-sm font-bold shadow-md shadow-rotaract-cranberry/20 hover:shadow-lg transition-all flex items-center gap-2 group"
+                        href="/admin"
+                        className="px-5 py-2.5 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white text-xs xl:text-sm font-bold shadow-md shadow-rotaract-navy/20 hover:shadow-lg transition-all flex items-center gap-2 group border border-white/20"
                     >
-                        <span>Register</span>
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                        <UserCheck className="w-4 h-4 text-rotaract-gold" />
+                        <span>Admin Login</span>
                     </Link>
                 </div>
 
@@ -153,11 +153,11 @@ export default function Navbar() {
 
                         <div className="pt-2 border-t border-slate-100">
                             <Link
-                                href="/events"
-                                className="w-full py-3.5 rounded-xl bg-rotaract-cranberry text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2"
+                                href="/admin"
+                                className="w-full py-3.5 rounded-xl bg-rotaract-navy text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2"
                             >
-                                <span>Register for Events</span>
-                                <ArrowRight className="w-4 h-4" />
+                                <UserCheck className="w-4 h-4 text-rotaract-gold" />
+                                <span>Admin Portal / Login</span>
                             </Link>
                         </div>
                     </motion.div>

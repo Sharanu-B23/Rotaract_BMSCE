@@ -4,12 +4,20 @@
         "role": "President (2026–27)",
         "photo": "/images/team/samyak.jpg",
         "quote": "Building an inclusive community where passion meets impactful action.",
-        "linkedin": "https://linkedin.com/in/rohandeshmukh",
-        "instagram": "https://instagram.com/rohan_deshmukh"
+        "linkedin": "https://www.linkedin.com/in/samyak-r-13675a32a/",
+        "instagram": "https://www.instagram.com/samyak_r_"
+    },
+    "ipp": {
+        "name": "IPP. Rtr. Akhilesh R",
+        "role": "Immediate Past President",
+        "photo": "/images/legacy/president_2526.png",
+        "quote": "Guiding with experience to empower the next generation of leaders.",
+        "linkedin": "https://www.linkedin.com/in/akhilesh-r-a07809282/",
+        "instagram": "https://www.instagram.com/akhileeyyy"
     },
     "secretary": {
         "name": "Rtr. Sharanabasappa Biradar",
-        "role": "Secretary (2026–27)",
+        "role": "Secretary",
         "photo": "/images/team/sharanabasappa.jpg",
         "quote": "Streamlining operations to let our service initiatives shine.",
         "linkedin": "https://www.linkedin.com/in/sharanabasappa-biradar-108164358/",
@@ -17,15 +25,14 @@
     },
     "vice_president": {
         "name": "Rtr. Sushanth Gowda S",
-        "role": "Vice President (2026–27)",
+        "role": "Vice President",
         "photo": "/images/team/sushanth.jpg",
         "quote": "Leading by example with integrity and vision",
-        "linkedin": "https://www.linkedin.com/in/sushanth-gowda-s-940111243/",
-        "instagram": "https://instagram.com/i_m_sushanth_gowda"
+        "instagram": "https://www.instagram.com/_sushanth.7"
     },
     "joint_secretary": {
         "name": "Rtr. Himashree B",
-        "role": "Joint Secretary (2026–27)",
+        "role": "Joint Secretary",
         "photo": "/images/team/himashree.jpg",
         "quote": "Leading by example with integrity and vision",
         "linkedin": "https://www.linkedin.com/in",
@@ -33,19 +40,18 @@
     },
     "treasurer": {
         "name": "Rtr. Vaishnavi S",
-        "role": "Treasurer (2026–27)",
+        "role": "Treasurer",
         "photo": "/images/team/vaishnavi.jpg",
         "quote": "Leading by example with integrity and vision",
-        "linkedin": "https://www.linkedin.com/in",
-        "instagram": "https://instagram.com"
+        "linkedin": "https://www.linkedin.com/in/vaishnavi-s-4109avs/",
+        "instagram": "https://www.instagram.com/_vaishnavi_s1226"
     },
     "sergeant_at_arms": {
         "name": "Rtr. Mohammad Hassaan Jawad",
-        "role": "Sergeant-at-Arms (2026–27)",
+        "role": "Sergeant-at-Arms",
         "photo": "/images/team/Jawad.jpg",
         "quote": "Leading by example with integrity and vision",
-        "linkedin": "https://www.linkedin.com/in",
-        "instagram": "https://instagram.com"
+        "instagram": "https://www.instagram.com/jawad7"
     },
-    "visionStatement": "In 2026–27, our focus is on sustainable social impact and empowering every individual member to lead. We are expanding our digital literacy drives into 10 new schools and deepening our partnership with Rotary District 3191 to foster global youth exchanges."
+    "visionStatement": "My vision is to channelise the power, energy, and potential of youth into meaningful, service-driven action that creates a lasting impact. I aspire to build a club where every member finds the confidence to contribute, lead, and inspire others, while nurturing a strong pipeline of future leaders who carry the spirit of service beyond their Rotaract journey. I aim to expand our reach, touch more lives through sustainable initiatives, and strengthen our contribution towards the Rotary Foundation. Most importantly, I want to make Rotaract a movement that people are proud to be part of - one that inspires more young minds to serve, lead, and create change."
 }

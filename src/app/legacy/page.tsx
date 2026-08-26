@@ -28,7 +28,7 @@ export default function LegacyPage() {
                 <div className="max-w-6xl mx-auto text-center space-y-4">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-medium text-rotaract-gold">
                         <History className="w-4 h-4" />
-                        <span>Celebrating 10 Years of Leadership</span>
+                        <span>Celebrating 11 Years of Leadership</span>
                     </div>
 
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold font-heading tracking-tight">
@@ -89,7 +89,7 @@ export default function LegacyPage() {
                     <div className="flex items-center gap-2 mb-8">
                         <Users className="w-6 h-6 text-rotaract-cranberry" />
                         <h2 className="text-3xl font-extrabold font-heading text-rotaract-navy">
-                            Team 2025-26 ({lastYearData.year})
+                            ({lastYearData.year})
                         </h2>
                     </div>
 
