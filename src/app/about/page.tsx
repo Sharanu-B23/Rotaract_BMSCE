@@ -72,8 +72,8 @@ export default function AboutPage() {
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 items-center">
 
                             {/* President Photo (Left) */}
-                            <div className="md:col-span-4 flex flex-col items-center">
-                                <div className="relative w-48 h-56 sm:w-56 sm:h-64 md:w-full md:h-72 rounded-2xl overflow-hidden shadow-md border-2 border-rotaract-gold/30 bg-slate-50 group">
+                            <div className="md:col-span-4 flex flex-col items-center justify-center h-full">
+                                <div className="relative w-48 h-64 sm:w-56 sm:h-72 md:w-full md:h-[340px] lg:h-[380px] rounded-2xl overflow-hidden shadow-md border-2 border-rotaract-gold/30 bg-slate-50 group">
                                     <Image
                                         src={president.photo}
                                         alt={president.name}

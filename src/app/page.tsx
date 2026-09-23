@@ -101,7 +101,7 @@ export default function HomePage() {
                                 <span>Our Mission</span>
                             </div>
                             <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-light">
-                                To provide young adults with opportunities to enhance knowledge and skills for personal development, address physical and social needs of communities, and promote better relations worldwide through impactful service initiatives.
+                                To create lasting and meaningful impact through purposeful initiatives, foster impactful collaborations with fellow Rotaract Clubs across the district, and actively contribute to The Rotary Foundation.
                             </p>
                         </div>
 
@@ -111,7 +111,7 @@ export default function HomePage() {
                                 <span>Our Vision</span>
                             </div>
                             <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-light">
-                                To empower youth through self-development and fellowship, creating ethical student leaders dedicated to impactful community service and sustainable positive change.
+                                To create lasting and meaningful impact through purposeful initiatives, foster meaningful collaborations with fellow Rotaract Clubs across the district, and strengthen our commitment to supporting The Rotary Foundation through active contributions.
                             </p>
                         </div>
                     </div>
@@ -128,7 +128,7 @@ export default function HomePage() {
                             2025–26 in Numbers
                         </h2>
                         <p className="text-slate-400 text-sm md:text-base font-light">
-                            A quick look at the measurable impact created by our members, partners, and community over the past Rotaract year.
+                            A quick look at the measurable impact created by the club over the past Rotaract year.
                         </p>
                     </div>
 
