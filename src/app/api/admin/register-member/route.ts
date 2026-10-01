@@ -5,6 +5,9 @@ export async function POST(request: Request) {
         const body = await request.json();
 
         const sheetUrl =
+            process.env.GOOGLE_SCRIPT_URL ||
+            process.env.JOIN_SHEET_URL ||
+            process.env.MEMBER_SHEET_URL ||
             process.env.NEXT_PUBLIC_JOIN_SHEET_URL ||
             process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL ||
             process.env.NEXT_PUBLIC_MEMBER_SHEET_URL;

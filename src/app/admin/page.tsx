@@ -188,7 +188,7 @@ export default function AdminPortalPage() {
     });
 
     // Handle Passcode Login
-    const handlePasscodeLogin = (e: React.FormEvent) => {
+    const handlePasscodeLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoginError("");
 
@@ -199,23 +199,41 @@ export default function AdminPortalPage() {
             return;
         }
 
-        const expectedPasscode = process.env.NEXT_PUBLIC_ADMIN_PASSCODE || "rotaract2026";
-
         if (!passcode) {
             setLoginError("Please enter your admin passcode.");
             return;
         }
 
-        if (passcode.trim() !== expectedPasscode.trim()) {
-            setLoginError("Incorrect admin passcode. (Default: rotaract2026)");
-            return;
-        }
+        try {
+            const res = await fetch("/api/admin/auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ passcode: passcode.trim(), email: chosenEmail }),
+            });
+            const data = await res.json();
 
-        localStorage.setItem("rotaract_admin_auth", "true");
-        localStorage.setItem("rotaract_admin_user", chosenEmail);
-        setAdminUserEmail(chosenEmail);
-        setIsAuthenticated(true);
-        setLoginError("");
+            if (!res.ok || !data.success) {
+                setLoginError(data.error || "Incorrect admin passcode.");
+                return;
+            }
+
+            localStorage.setItem("rotaract_admin_auth", "true");
+            localStorage.setItem("rotaract_admin_user", chosenEmail);
+            setAdminUserEmail(chosenEmail);
+            setIsAuthenticated(true);
+            setLoginError("");
+        } catch {
+            const expectedPasscode = process.env.NEXT_PUBLIC_ADMIN_PASSCODE || "rotaract2026";
+            if (passcode.trim() === expectedPasscode.trim()) {
+                localStorage.setItem("rotaract_admin_auth", "true");
+                localStorage.setItem("rotaract_admin_user", chosenEmail);
+                setAdminUserEmail(chosenEmail);
+                setIsAuthenticated(true);
+                setLoginError("");
+            } else {
+                setLoginError("Incorrect admin passcode.");
+            }
+        }
     };
 
     // Restore existing admin session on mount
