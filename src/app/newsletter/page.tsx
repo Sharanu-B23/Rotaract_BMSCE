@@ -21,11 +21,11 @@ interface NewsletterIssue {
 
 const PAST_ISSUES: NewsletterIssue[] = [
     {
-        id: "pragati-2026-edition-1",
-        title: "Pragati 2026 - Edition 1",
-        monthYear: "2026",
-        summary: "The official annual newsletter of Rotaract Club of BMSCE highlighting our flagship events, impact stories, community initiatives, and member achievements.",
-        coverImage: "/rotaract-logo.png",
+        id: "pragati-2025-edition-2",
+        title: "Pragati 2025 - Edition 2",
+        monthYear: "2025",
+        summary: "The second edition of our official newsletter for 2025 highlighting community initiatives, flagship club events, leadership drives, and impactful member stories.",
+        coverImage: "/images/newsletter2.png",
         pdfUrl: "https://drive.google.com",
         isFeatured: true,
     },

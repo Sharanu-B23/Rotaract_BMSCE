@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { GoogleLogin } from "@react-oauth/google";
+import { useGoogleLogin, googleLogout } from "@react-oauth/google";
 import {
     Lock,
     UserPlus,
@@ -17,7 +17,11 @@ import {
     ShieldCheck,
     AlertCircle,
     Upload,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Key,
+    ExternalLink,
+    Clock,
+    Laptop
 } from "lucide-react";
 import upcomingEventsRaw from "@/data/upcomingEvents.json";
 
@@ -38,8 +42,24 @@ interface EventItem {
 
 export default function AdminPortalPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [adminUserEmail, setAdminUserEmail] = useState<string>("");
+    const [loginTab, setLoginTab] = useState<"passcode" | "google">("passcode");
+    const [selectedAdminProfile, setSelectedAdminProfile] = useState<string>("rtrsharan318@gmail.com");
+    const [customAdminEmail, setCustomAdminEmail] = useState<string>("");
     const [passcode, setPasscode] = useState("");
     const [loginError, setLoginError] = useState("");
+
+    // Allowed Admin profiles configured in .env.local
+    const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "";
+    const allowedEmails = allowedEmailsEnv
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+    const adminProfiles = allowedEmails.length > 0 ? allowedEmails : [
+        "rtrsharan318@gmail.com",
+        "rtrsamyakr@gmail.com",
+        "rtrhimashree@gmail.com"
+    ];
 
     // Active Tab: 'members' | 'events'
     const [activeTab, setActiveTab] = useState<"members" | "events">("members");
@@ -47,16 +67,39 @@ export default function AdminPortalPage() {
     // --- MEMBER REGISTRATION FORM STATE ---
     const [memberForm, setMemberForm] = useState({
         fullName: "",
-        email: "",
-        phone: "",
         usn: "",
-        department: "",
-        academicYear: "1st Year",
-        role: "General Member",
+        collegeEmail: "",
+        personalEmail: "",
+        yearOfStudy: "1st Year",
+        phone: "",
+        bloodGroup: "Prefer not to say",
+        membershipType: "RI - Rotary International membership",
+        payeeName: "",
+        timestamp: "",
     });
+    const [registrationDesk, setRegistrationDesk] = useState<string>("Desk 1 (Sharan)");
     const [isSubmittingMember, setIsSubmittingMember] = useState(false);
     const [memberSubmittedSuccess, setMemberSubmittedSuccess] = useState(false);
     const [memberError, setMemberError] = useState("");
+
+    // Auto-detect and persist registration desk / device for simultaneous multi-person registrations
+    useEffect(() => {
+        const savedDesk = localStorage.getItem("rotaract_admin_desk");
+        if (savedDesk) {
+            setRegistrationDesk(savedDesk);
+        } else if (adminUserEmail.toLowerCase().includes("samyak")) {
+            setRegistrationDesk("Desk 2 (Samyak)");
+        } else if (adminUserEmail.toLowerCase().includes("hima")) {
+            setRegistrationDesk("Desk 3 (Himashree)");
+        } else {
+            setRegistrationDesk("Desk 1 (Sharan)");
+        }
+    }, [adminUserEmail]);
+
+    const handleDeskChange = (desk: string) => {
+        setRegistrationDesk(desk);
+        localStorage.setItem("rotaract_admin_desk", desk);
+    };
 
     // --- EVENT MANAGEMENT STATE ---
     const [eventsList, setEventsList] = useState<EventItem[]>([]);
@@ -75,32 +118,114 @@ export default function AdminPortalPage() {
     });
     const [isEditingEvent, setIsEditingEvent] = useState(false);
     const [eventSuccessMsg, setEventSuccessMsg] = useState("");
+    const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-    // Account Picker Modal state
-    const [showGoogleModal, setShowGoogleModal] = useState(false);
-    const [adminUserEmail, setAdminUserEmail] = useState<string>("");
+    const loginWithGoogle = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            try {
+                setIsAuthenticating(true);
+                setLoginError("");
 
-    const googleAccounts = [
-        { name: "Rotaract BMSCE Admin", email: "rotaract@bmsce.ac.in", avatar: "R" },
-        { name: "President Rotaract", email: "president.rotaract@bmsce.ac.in", avatar: "P" },
-        { name: "Secretary Rotaract", email: "secretary.rotaract@bmsce.ac.in", avatar: "S" },
-    ];
+                const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                    headers: {
+                        Authorization: `Bearer ${tokenResponse.access_token}`,
+                    },
+                });
 
-    const handleSelectGoogleAccount = (acc: { name: string; email: string }) => {
+                if (!res.ok) {
+                    throw new Error("Failed to fetch user profile from Google");
+                }
+
+                const userData = await res.json();
+                const userEmail = (userData.email || "").toLowerCase().trim();
+
+                if (!userEmail) {
+                    setLoginError("Could not retrieve email address from the selected Google account.");
+                    setIsAuthenticating(false);
+                    return;
+                }
+
+                // Get configured allowed emails list
+                const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "";
+                const allowedEmails = allowedEmailsEnv
+                    .split(",")
+                    .map((e) => e.trim().toLowerCase())
+                    .filter(Boolean);
+
+                // If whitelist is set, enforce matching
+                if (allowedEmails.length > 0 && !allowedEmails.includes(userEmail)) {
+                    setLoginError(`Access denied for ${userEmail}. This Google account is not on the admin whitelist.`);
+                    setIsAuthenticating(false);
+                    return;
+                }
+
+                localStorage.setItem("rotaract_admin_auth", "true");
+                localStorage.setItem("rotaract_admin_user", userEmail || "Authorized Admin");
+                setAdminUserEmail(userEmail || "Authorized Admin");
+                setIsAuthenticated(true);
+                setLoginError("");
+            } catch (e) {
+                console.error("Auth Decode Error:", e);
+                setLoginError("Failed to verify Google credentials. Please try again.");
+            } finally {
+                setIsAuthenticating(false);
+            }
+        },
+        onError: (err) => {
+            console.error("Google Sign-In Error:", err);
+            setLoginError("Google Sign-In was cancelled or failed. Please try again.");
+            setIsAuthenticating(false);
+        },
+        onNonOAuthError: (nonOAuthError) => {
+            if (nonOAuthError.type === "popup_failed_to_open") {
+                setLoginError("Pop-up window was blocked by your browser. Please allow pop-ups for this site to choose your Google Account.");
+            } else if (nonOAuthError.type === "popup_closed") {
+                setLoginError("Account selection was cancelled (pop-up closed).");
+            }
+            setIsAuthenticating(false);
+        },
+        prompt: "select_account",
+    });
+
+    // Handle Passcode Login
+    const handlePasscodeLogin = (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoginError("");
+
+        const chosenEmail = (selectedAdminProfile === "custom" ? customAdminEmail : selectedAdminProfile).trim().toLowerCase();
+
+        if (!chosenEmail) {
+            setLoginError("Please choose or enter an authorized admin email address.");
+            return;
+        }
+
+        const expectedPasscode = process.env.NEXT_PUBLIC_ADMIN_PASSCODE || "rotaract2026";
+
+        if (!passcode) {
+            setLoginError("Please enter your admin passcode.");
+            return;
+        }
+
+        if (passcode.trim() !== expectedPasscode.trim()) {
+            setLoginError("Incorrect admin passcode. (Default: rotaract2026)");
+            return;
+        }
+
         localStorage.setItem("rotaract_admin_auth", "true");
-        localStorage.setItem("rotaract_admin_user", acc.email);
-        setAdminUserEmail(acc.email);
+        localStorage.setItem("rotaract_admin_user", chosenEmail);
+        setAdminUserEmail(chosenEmail);
         setIsAuthenticated(true);
-        setShowGoogleModal(false);
+        setLoginError("");
     };
 
-    // Clear auth state on mount and unmount so leaving/switching pages logs out the admin
+    // Restore existing admin session on mount
     useEffect(() => {
-        // Clear session on unmount or navigation away
-        return () => {
-            localStorage.removeItem("rotaract_admin_auth");
-            localStorage.removeItem("rotaract_admin_user");
-        };
+        const storedAuth = localStorage.getItem("rotaract_admin_auth");
+        const storedUser = localStorage.getItem("rotaract_admin_user");
+        if (storedAuth === "true" && storedUser) {
+            setIsAuthenticated(true);
+            setAdminUserEmail(storedUser);
+        }
     }, []);
 
     // Load custom events from localStorage or fallback to JSON
@@ -124,38 +249,63 @@ export default function AdminPortalPage() {
     };
 
     const handleLogout = () => {
+        try {
+            googleLogout();
+        } catch {
+            // ignore if not initialized
+        }
         setIsAuthenticated(false);
         localStorage.removeItem("rotaract_admin_auth");
         localStorage.removeItem("rotaract_admin_user");
+        setAdminUserEmail("");
+        setLoginError("");
     };
 
-    // Handle Member Submit to Sheets
+    // Handle Member Submit
     const handleMemberSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmittingMember(true);
         setMemberError("");
         setMemberSubmittedSuccess(false);
 
-        const memberSheetUrl = process.env.NEXT_PUBLIC_MEMBER_SHEET_URL || process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
+        const memberSheetUrl =
+            process.env.NEXT_PUBLIC_JOIN_SHEET_URL ||
+            process.env.NEXT_PUBLIC_MEMBER_SHEET_URL ||
+            process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
 
         if (!memberSheetUrl) {
-            setMemberError("Google Script URL environment variable is missing.");
+            setMemberError("Sheet webhook URL is missing in environment variables.");
             setIsSubmittingMember(false);
             return;
         }
 
+        const now = new Date();
+        const currentTimestamp =
+            (memberForm.timestamp && memberForm.timestamp.trim()) ||
+            now.toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+            });
+
         try {
             const payload = JSON.stringify({
                 type: "NEW_MEMBER_REGISTRATION",
+                receiptId: `RTR-ADM-${Date.now().toString().slice(-6)}`,
+                desk: registrationDesk,
+                device: registrationDesk,
                 fullName: memberForm.fullName,
-                email: memberForm.email,
-                phone: memberForm.phone,
                 usn: memberForm.usn,
-                department: memberForm.department,
-                academicYear: memberForm.academicYear,
-                role: memberForm.role,
+                collegeEmail: memberForm.collegeEmail,
+                personalEmail: memberForm.personalEmail,
+                yearOfStudy: memberForm.yearOfStudy,
+                phone: memberForm.phone,
+                bloodGroup: memberForm.bloodGroup,
+                membershipType: memberForm.membershipType,
+                payeeName: memberForm.payeeName,
+                amount: memberForm.membershipType.startsWith("RI") ? 800 : 320,
+                timestamp: currentTimestamp,
+                registeredAt: currentTimestamp,
                 addedBy: adminUserEmail || "Admin",
-                registeredAt: new Date().toISOString(),
             });
 
             // Send payload as text/plain to bypass CORS preflight restrictions in Google Apps Script
@@ -170,17 +320,23 @@ export default function AdminPortalPage() {
             setMemberSubmittedSuccess(true);
             setMemberForm({
                 fullName: "",
-                email: "",
-                phone: "",
                 usn: "",
-                department: "",
-                academicYear: "1st Year",
-                role: "General Member",
+                collegeEmail: "",
+                personalEmail: "",
+                yearOfStudy: "1st Year",
+                phone: "",
+                bloodGroup: "Prefer not to say",
+                membershipType: "RI - Rotary International membership",
+                payeeName: "",
+                timestamp: new Date().toLocaleString("en-IN", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                }),
             });
         } catch (err) {
-            console.error("Sheet save error:", err);
+            console.error("Member registration error:", err);
             setIsSubmittingMember(false);
-            setMemberError("Failed to transmit data to Google Sheets. Check network connection.");
+            setMemberError("Failed to record member registration. Check network connection.");
         }
     };
 
@@ -257,8 +413,47 @@ export default function AdminPortalPage() {
                         </div>
                         <h2 className="text-2xl font-bold font-heading text-rotaract-navy">Admin Portal Login</h2>
                         <p className="text-xs text-slate-500">
-                            Sign in with your authorized Google Account to manage member registrations and portal events.
+                            Rotaract Club of BMSCE • Executive & Board Management
                         </p>
+                    </div>
+
+                    {/* Login Tab Switcher */}
+                    <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setLoginTab("passcode");
+                                setLoginError("");
+                            }}
+                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                                loginTab === "passcode"
+                                    ? "bg-white text-rotaract-navy shadow-sm"
+                                    : "text-slate-500 hover:text-slate-800"
+                            }`}
+                        >
+                            <Key className="w-3.5 h-3.5 text-rotaract-gold" />
+                            <span>Admin Passcode</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setLoginTab("google");
+                                setLoginError("");
+                            }}
+                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                                loginTab === "google"
+                                    ? "bg-white text-rotaract-navy shadow-sm"
+                                    : "text-slate-500 hover:text-slate-800"
+                            }`}
+                        >
+                            <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                            </svg>
+                            <span>Google OAuth</span>
+                        </button>
                     </div>
 
                     {loginError && (
@@ -268,58 +463,114 @@ export default function AdminPortalPage() {
                         </div>
                     )}
 
-                    <div className="space-y-4 pt-2 flex flex-col items-center">
-                        <GoogleLogin
-                            onSuccess={(credentialResponse) => {
-                                try {
-                                    if (!credentialResponse.credential) {
-                                        setLoginError("Failed to retrieve Google credentials.");
-                                        return;
-                                    }
-                                    // Parse JWT payload base64 string
-                                    const base64Url = credentialResponse.credential.split('.')[1];
-                                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                                    const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
-                                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                                    }).join(''));
-                                    
-                                    const userData = JSON.parse(jsonPayload);
-                                    const userEmail = userData.email ? userData.email.toLowerCase() : "";
+                    {/* TAB 1: PASSCODE LOGIN */}
+                    {loginTab === "passcode" && (
+                        <form onSubmit={handlePasscodeLogin} className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-700">Choose Admin Email</label>
+                                <select
+                                    value={selectedAdminProfile}
+                                    onChange={(e) => setSelectedAdminProfile(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-gold"
+                                >
+                                    {adminProfiles.map((email) => (
+                                        <option key={email} value={email}>
+                                            {email} {email === "rtrsharan318@gmail.com" ? "★ (Lead Admin)" : "(Board Admin)"}
+                                        </option>
+                                    ))}
+                                    <option value="custom">Enter custom admin email...</option>
+                                </select>
+                            </div>
 
-                                    // Get configured allowed emails list
-                                    const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "";
-                                    const allowedEmails = allowedEmailsEnv
-                                        .split(",")
-                                        .map((e) => e.trim().toLowerCase())
-                                        .filter(Boolean);
+                            {selectedAdminProfile === "custom" && (
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-slate-700">Custom Admin Email</label>
+                                    <input
+                                        type="email"
+                                        placeholder="admin@rotaractbmsce.org"
+                                        value={customAdminEmail}
+                                        onChange={(e) => setCustomAdminEmail(e.target.value)}
+                                        required
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-gold"
+                                    />
+                                </div>
+                            )}
 
-                                    // If whitelist is set, enforce matching
-                                    if (allowedEmails.length > 0 && !allowedEmails.includes(userEmail)) {
-                                        setLoginError(`Access denied for ${userEmail}. Account is not on the admin whitelist.`);
-                                        return;
-                                    }
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-xs font-semibold text-slate-700">Admin Passcode</label>
+                                    <span className="text-[10px] text-slate-400 font-mono">rotaract2026</span>
+                                </div>
+                                <input
+                                    type="password"
+                                    placeholder="Enter admin passcode"
+                                    value={passcode}
+                                    onChange={(e) => setPasscode(e.target.value)}
+                                    required
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-gold"
+                                />
+                            </div>
 
-                                    localStorage.setItem("rotaract_admin_auth", "true");
-                                    localStorage.setItem("rotaract_admin_user", userEmail || "Authorized Admin");
-                                    setAdminUserEmail(userEmail || "Authorized Admin");
-                                    setIsAuthenticated(true);
+                            <button
+                                type="submit"
+                                className="w-full py-3 bg-rotaract-navy hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                            >
+                                <ShieldCheck className="w-4 h-4 text-rotaract-gold" />
+                                <span>Sign In to Admin Dashboard</span>
+                            </button>
+
+                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                                <span>Instant local login for whitelisted Rotaract BMSCE admins</span>
+                            </div>
+                        </form>
+                    )}
+
+                    {/* TAB 2: GOOGLE OAUTH */}
+                    {loginTab === "google" && (
+                        <div className="space-y-4">
+                            <button
+                                type="button"
+                                onClick={() => {
                                     setLoginError("");
-                                } catch (e) {
-                                    console.error("Auth Decode Error:", e);
-                                    setLoginError("Failed to verify Google token.");
-                                }
-                            }}
-                            onError={() => {
-                                setLoginError("Google Sign-In was unsuccessful. Please try again.");
-                            }}
-                            useOneTap
-                        />
-                    </div>
+                                    loginWithGoogle({ prompt: "select_account" });
+                                }}
+                                disabled={isAuthenticating}
+                                className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-2xl shadow-sm hover:shadow text-sm font-semibold text-slate-700 transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+                            >
+                                {isAuthenticating ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin text-rotaract-cranberry" />
+                                        <span>Verifying Google Account...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                                        </svg>
+                                        <span>Sign in with Google</span>
+                                    </>
+                                )}
+                            </button>
 
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                        <span>Google Single Sign-On enabled for administrators</span>
-                    </div>
+                            {/* Origin mismatch troubleshooting guide */}
+                            <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 space-y-2 leading-relaxed">
+                                <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                                    <span>Seeing "Error 400: origin_mismatch"?</span>
+                                </div>
+                                <p className="text-slate-600">
+                                    Google OAuth rejects the popup before showing the account picker because <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">http://localhost:3000</code> is not registered in Google Cloud Console.
+                                </p>
+                                <p className="text-slate-700 font-medium">
+                                    💡 <strong>Instant fix:</strong> Switch to the <button type="button" onClick={() => setLoginTab("passcode")} className="text-rotaract-navy underline font-bold">Admin Passcode</button> tab above to log in immediately with your whitelisted email!
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </motion.div>
             </div>
         );
@@ -338,7 +589,7 @@ export default function AdminPortalPage() {
                         </div>
                         <h1 className="text-3xl font-extrabold font-heading">Rotaract Admin Dashboard</h1>
                         <p className="text-slate-400 text-xs md:text-sm">
-                            No database needed • Direct Google Sheets synchronization & live event updates.
+                            Manage club registrations, member records & live events.
                         </p>
                     </div>
 
@@ -364,7 +615,7 @@ export default function AdminPortalPage() {
                         }`}
                     >
                         <UserPlus className="w-4 h-4" />
-                        <span>Register New Member (Google Sheets)</span>
+                        <span>Register New Member</span>
                     </button>
                     <button
                         onClick={() => setActiveTab("events")}
@@ -384,37 +635,64 @@ export default function AdminPortalPage() {
             <main className="max-w-6xl mx-auto px-6 pt-8">
                 {/* TAB 1: MEMBER REGISTRATION */}
                 {activeTab === "members" && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+                    <div className="max-w-4xl mx-auto bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-sm space-y-6">
+                        <div className="border-b border-slate-100 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
                                 <h2 className="text-xl font-bold font-heading text-rotaract-navy flex items-center gap-2">
                                     <UserPlus className="w-5 h-5 text-rotaract-cranberry" />
                                     Register New Rotaract Member
                                 </h2>
                                 <p className="text-xs text-slate-500 mt-1">
-                                    Submitting this form adds new member details directly to your configured Google Sheet registry.
+                                    Record and enroll verified club members with academic, contact, and membership payment details.
                                 </p>
                             </div>
 
-                            {memberSubmittedSuccess && (
-                                <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-3">
-                                    <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
-                                    <div>
-                                        <p className="font-bold">Member Successfully Registered!</p>
-                                        <p className="text-[11px] text-emerald-700">
-                                            Data transmitted to connected Google Sheet.
-                                        </p>
-                                    </div>
+                            {/* Device / Desk Switcher for simultaneous multi-person registrations */}
+                            <div className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-2xl self-start md:self-auto shadow-sm">
+                                <div className="w-7 h-7 rounded-xl bg-rotaract-navy text-rotaract-gold flex items-center justify-center">
+                                    <Laptop className="w-3.5 h-3.5" />
                                 </div>
-                            )}
-
-                            {memberError && (
-                                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
-                                    {memberError}
+                                <div className="text-left">
+                                    <span className="block text-[10px] uppercase font-bold text-slate-400">Current Device / Desk</span>
+                                    <select
+                                        value={registrationDesk}
+                                        onChange={(e) => handleDeskChange(e.target.value)}
+                                        className="bg-transparent text-xs font-bold text-rotaract-navy focus:outline-none cursor-pointer pr-2"
+                                    >
+                                        <option value="Desk 1 (Sharan)">Desk 1 (Sharan)</option>
+                                        <option value="Desk 2 (Samyak)">Desk 2 (Samyak)</option>
+                                        <option value="Desk 3 (Himashree)">Desk 3 (Himashree)</option>
+                                        <option value="Desk 4 (Support Desk)">Desk 4 (Support Desk)</option>
+                                    </select>
                                 </div>
-                            )}
+                            </div>
+                        </div>
 
-                            <form onSubmit={handleMemberSubmit} className="space-y-4">
+                        {memberSubmittedSuccess && (
+                            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-3">
+                                <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                                <div>
+                                    <p className="font-bold">Member Successfully Registered!</p>
+                                    <p className="text-[11px] text-emerald-700">
+                                        Member details and payment records have been securely added.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {memberError && (
+                            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                <span>{memberError}</span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleMemberSubmit} className="space-y-6">
+                            {/* Personal & College Info */}
+                            <div className="space-y-4">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                    Student & Academic Details
+                                </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -423,7 +701,7 @@ export default function AdminPortalPage() {
                                         <input
                                             type="text"
                                             required
-                                            placeholder="e.g. Ananya Sharma"
+                                            placeholder="e.g. Rahul Sharma"
                                             value={memberForm.fullName}
                                             onChange={(e) => setMemberForm({ ...memberForm, fullName: e.target.value })}
                                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
@@ -432,15 +710,15 @@ export default function AdminPortalPage() {
 
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            Email Address *
+                                            USN *
                                         </label>
                                         <input
-                                            type="email"
+                                            type="text"
                                             required
-                                            placeholder="ananya@bmsce.ac.in"
-                                            value={memberForm.email}
-                                            onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                            placeholder="e.g. 1BM23CS001"
+                                            value={memberForm.usn}
+                                            onChange={(e) => setMemberForm({ ...memberForm, usn: e.target.value.toUpperCase() })}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy uppercase"
                                         />
                                     </div>
                                 </div>
@@ -448,7 +726,54 @@ export default function AdminPortalPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            Phone / WhatsApp *
+                                            College Email ID *
+                                        </label>
+                                        <input
+                                            type="email"
+                                            required
+                                            placeholder="rahul.cs23@bmsce.ac.in"
+                                            value={memberForm.collegeEmail}
+                                            onChange={(e) => setMemberForm({ ...memberForm, collegeEmail: e.target.value })}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Personal Email ID *
+                                        </label>
+                                        <input
+                                            type="email"
+                                            required
+                                            placeholder="rahulsharma@gmail.com"
+                                            value={memberForm.personalEmail}
+                                            onChange={(e) => setMemberForm({ ...memberForm, personalEmail: e.target.value })}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Year of Study *
+                                        </label>
+                                        <select
+                                            value={memberForm.yearOfStudy}
+                                            onChange={(e) => setMemberForm({ ...memberForm, yearOfStudy: e.target.value })}
+                                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white"
+                                        >
+                                            <option>1st Year</option>
+                                            <option>2nd Year</option>
+                                            <option>3rd Year</option>
+                                            <option>4th Year</option>
+                                            <option>Postgraduate / Other</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Phone (WhatsApp Enabled) *
                                         </label>
                                         <input
                                             type="tel"
@@ -462,110 +787,115 @@ export default function AdminPortalPage() {
 
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            USN / Roll Number
+                                            Blood Group <span className="font-normal text-slate-400">(If willing to donate)</span>
                                         </label>
-                                        <input
-                                            type="text"
-                                            placeholder="1BM23CS001"
-                                            value={memberForm.usn}
-                                            onChange={(e) => setMemberForm({ ...memberForm, usn: e.target.value })}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
-                                        />
+                                        <select
+                                            value={memberForm.bloodGroup}
+                                            onChange={(e) => setMemberForm({ ...memberForm, bloodGroup: e.target.value })}
+                                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white"
+                                        >
+                                            <option value="Prefer not to say">Prefer not to say</option>
+                                            <option value="A+">A+</option>
+                                            <option value="A-">A-</option>
+                                            <option value="B+">B+</option>
+                                            <option value="B-">B-</option>
+                                            <option value="O+">O+</option>
+                                            <option value="O-">O-</option>
+                                            <option value="AB+">AB+</option>
+                                            <option value="AB-">AB-</option>
+                                        </select>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Membership & Payment Details */}
+                            <div className="space-y-4 pt-2 border-t border-slate-100">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                    Membership Type & Payment Verification
+                                </h3>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            Department
+                                            Type of Membership *
+                                        </label>
+                                        <select
+                                            value={memberForm.membershipType}
+                                            onChange={(e) => setMemberForm({ ...memberForm, membershipType: e.target.value })}
+                                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white font-medium"
+                                        >
+                                            <option value="RI - Rotary International membership">RI - Rotary International membership</option>
+                                            <option value="RM - Rotaract Club membership">RM - Rotaract Club membership</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Payee Name <span className="font-normal text-slate-400">(If paid online)</span>
                                         </label>
                                         <input
                                             type="text"
-                                            placeholder="e.g. CSE / ISE / ECE"
-                                            value={memberForm.department}
-                                            onChange={(e) => setMemberForm({ ...memberForm, department: e.target.value })}
+                                            placeholder="Account holder name on UPI (if paid online)"
+                                            value={memberForm.payeeName}
+                                            onChange={(e) => setMemberForm({ ...memberForm, payeeName: e.target.value })}
                                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            Academic Year
-                                        </label>
-                                        <select
-                                            value={memberForm.academicYear}
-                                            onChange={(e) => setMemberForm({ ...memberForm, academicYear: e.target.value })}
-                                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white"
-                                        >
-                                            <option>1st Year</option>
-                                            <option>2nd Year</option>
-                                            <option>3rd Year</option>
-                                            <option>4th Year</option>
-                                        </select>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className="block text-xs font-semibold text-slate-700">
+                                                Timestamp
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const now = new Date();
+                                                    setMemberForm({
+                                                        ...memberForm,
+                                                        timestamp: now.toLocaleString("en-IN", {
+                                                            dateStyle: "medium",
+                                                            timeStyle: "short",
+                                                        }),
+                                                    });
+                                                }}
+                                                className="text-[10px] text-rotaract-cranberry hover:underline flex items-center gap-1 font-medium cursor-pointer"
+                                            >
+                                                <Clock className="w-3 h-3" />
+                                                <span>Now</span>
+                                            </button>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. 01/10/2026, 06:45 PM"
+                                            value={memberForm.timestamp}
+                                            onChange={(e) => setMemberForm({ ...memberForm, timestamp: e.target.value })}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-slate-50 text-slate-700"
+                                        />
                                     </div>
-
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            Club Role
-                                        </label>
-                                        <select
-                                            value={memberForm.role}
-                                            onChange={(e) => setMemberForm({ ...memberForm, role: e.target.value })}
-                                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white"
-                                        >
-                                            <option>General Member</option>
-                                            <option>Core Committee</option>
-                                            <option>Director</option>
-                                            <option>Executive Board</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="pt-4">
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmittingMember}
-                                        className="w-full py-3.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 disabled:bg-slate-300 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {isSubmittingMember ? (
-                                            <>
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                <span>Transmitting to Google Sheet...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <FileSpreadsheet className="w-4 h-4" />
-                                                <span>Register & Sync to Sheet</span>
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        {/* Info / Sheets Setup Card */}
-                        <div className="bg-slate-900 text-white rounded-3xl p-6 border border-slate-800 space-y-4 flex flex-col justify-between">
-                            <div className="space-y-3">
-                                <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center">
-                                    <FileSpreadsheet className="w-5 h-5" />
-                                </div>
-                                <h3 className="text-lg font-bold font-heading">Google Sheets Integration</h3>
-                                <p className="text-xs text-slate-400 leading-relaxed">
-                                    Your website connects directly to Google Apps Script. No database setup, hosting fees, or backend maintenance required!
-                                </p>
-
-                                <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-[11px] text-slate-300 space-y-1">
-                                    <p className="font-semibold text-rotaract-gold">Configured Webhook URL:</p>
-                                    <p className="font-mono truncate text-slate-400">
-                                        {process.env.NEXT_PUBLIC_MEMBER_SHEET_URL || process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || "Using standard default endpoint"}
-                                    </p>
                                 </div>
                             </div>
 
-                            <div className="p-3 bg-rotaract-gold/10 text-rotaract-gold border border-rotaract-gold/20 rounded-xl text-[11px]">
-                                💡 Tip: You can set <code className="bg-black/30 px-1 py-0.5 rounded">NEXT_PUBLIC_MEMBER_SHEET_URL</code> in your environment variables to link any custom Google Sheet.
+                            <div className="pt-2">
+                                <button
+                                    type="submit"
+                                    disabled={isSubmittingMember}
+                                    className="w-full py-3.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 disabled:bg-slate-300 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    {isSubmittingMember ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Registering Member...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UserPlus className="w-4 h-4" />
+                                            <span>Register Member</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 )}
 

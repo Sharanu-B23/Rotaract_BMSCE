@@ -181,18 +181,18 @@ export default function HomePage() {
                 <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
                     <div className="space-y-2">
                         <h3 className="text-2xl md:text-3xl font-bold font-heading">
-                            Ready to see what we're doing next?
+                            Ready to Make a Real Impact?
                         </h3>
                         <p className="text-white/80 text-sm md:text-base font-light">
-                            Check out our upcoming community drives, workshops, and flagship events.
+                            Join the Rotaract Club of BMSCE and develop leadership skills, forge lifelong friendships, and serve the community.
                         </p>
                     </div>
 
                     <Link
-                        href="/events"
+                        href="/join-the-club"
                         className="px-8 py-3.5 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white font-semibold shadow-lg transition-all duration-200 flex-shrink-0 flex items-center gap-2 group"
                     >
-                        <span>Upcoming Events</span>
+                        <span>Become a Member</span>
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </Link>
                 </div>

@@ -10,6 +10,7 @@ import { Menu, X, ArrowRight, Sparkles, UserCheck } from "lucide-react";
 const NAV_LINKS = [
     { href: "/", label: "Home" },
     { href: "/about", label: "About Us" },
+    { href: "/join-the-club", label: "Join Us" },
     { href: "/showcase", label: "Showcase" },
     { href: "/legacy", label: "Legacy" },
     { href: "/events", label: "Upcoming Events" },
