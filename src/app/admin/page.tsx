@@ -268,17 +268,6 @@ export default function AdminPortalPage() {
         setMemberError("");
         setMemberSubmittedSuccess(false);
 
-        const memberSheetUrl =
-            process.env.NEXT_PUBLIC_JOIN_SHEET_URL ||
-            process.env.NEXT_PUBLIC_MEMBER_SHEET_URL ||
-            process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
-
-        if (!memberSheetUrl) {
-            setMemberError("Sheet webhook URL is missing in environment variables.");
-            setIsSubmittingMember(false);
-            return;
-        }
-
         const now = new Date();
         const currentTimestamp =
             (memberForm.timestamp && memberForm.timestamp.trim()) ||
@@ -288,7 +277,7 @@ export default function AdminPortalPage() {
             });
 
         try {
-            const payload = JSON.stringify({
+            const payload = {
                 type: "NEW_MEMBER_REGISTRATION",
                 receiptId: `RTR-ADM-${Date.now().toString().slice(-6)}`,
                 desk: registrationDesk,
@@ -305,16 +294,20 @@ export default function AdminPortalPage() {
                 amount: memberForm.membershipType.startsWith("RI") ? 800 : 320,
                 timestamp: currentTimestamp,
                 registeredAt: currentTimestamp,
-                addedBy: adminUserEmail || "Admin",
+                addedBy: adminUserEmail || registrationDesk,
+            };
+
+            const response = await fetch("/api/admin/register-member", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
             });
 
-            // Send payload as text/plain to bypass CORS preflight restrictions in Google Apps Script
-            await fetch(memberSheetUrl, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "text/plain" },
-                body: payload,
-            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || "Failed to record member registration into Google Sheet.");
+            }
 
             setIsSubmittingMember(false);
             setMemberSubmittedSuccess(true);
