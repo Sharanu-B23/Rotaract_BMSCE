@@ -349,9 +349,7 @@ export default function JoinTheClubPage() {
 
                 // Direct Google Sheet Webhook Fallback if /api/join is unavailable
                 const directScriptUrl =
-                    process.env.NEXT_PUBLIC_JOIN_SHEET_URL ||
-                    process.env.NEXT_PUBLIC_MEMBER_SHEET_URL ||
-                    process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
+                    process.env.NEXT_PUBLIC_JOIN_SHEET_URL;
 
                 if (directScriptUrl) {
                     await fetch(directScriptUrl, {

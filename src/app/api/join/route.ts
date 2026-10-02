@@ -38,12 +38,10 @@ export async function POST(request: Request) {
             );
         }
 
-        // Determine destination script URL (Dedicated Join Sheet URL takes priority)
+        // Join Us Page applicant registrations: Strictly target the dedicated Join Sheet URL
         const joinSheetUrl =
-            process.env.NEXT_PUBLIC_JOIN_SHEET_URL ||
             process.env.JOIN_SHEET_URL ||
-            process.env.NEXT_PUBLIC_MEMBER_SHEET_URL ||
-            process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
+            process.env.NEXT_PUBLIC_JOIN_SHEET_URL;
 
         const studentCleanName = `${fullName}_${usn.toUpperCase()}`.replace(/[^a-zA-Z0-9_-]/g, "_");
         const formattedFileName = screenshotFileName || `${studentCleanName}_PaymentScreenshot.png`;
@@ -81,6 +79,7 @@ export async function POST(request: Request) {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify(payload),
+                    redirect: "follow",
                 });
 
                 let responseData: any = {};

@@ -4,17 +4,14 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
 
+        // Admin Portal member registrations: Strictly target the Admin Google Script Sheet URL
         const sheetUrl =
             process.env.GOOGLE_SCRIPT_URL ||
-            process.env.JOIN_SHEET_URL ||
-            process.env.MEMBER_SHEET_URL ||
-            process.env.NEXT_PUBLIC_JOIN_SHEET_URL ||
-            process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL ||
-            process.env.NEXT_PUBLIC_MEMBER_SHEET_URL;
+            process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
 
         if (!sheetUrl) {
             return NextResponse.json(
-                { success: false, error: "Google Script Webhook URL is missing in .env.local" },
+                { success: false, error: "Admin Google Script Webhook URL (GOOGLE_SCRIPT_URL or NEXT_PUBLIC_GOOGLE_SCRIPT_URL) is missing in .env.local" },
                 { status: 500 }
             );
         }
