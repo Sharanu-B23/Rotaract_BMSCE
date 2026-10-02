@@ -158,9 +158,23 @@
         "highlights": []
     },
     {
-        "year": "2016–17",
+        "year": "2015–16",
+        "president": "",
+        "presidentImage": "/images/legacy/president_1516.png",
+        "secretary": "",
+        "teamPhoto": "/images/legacy/2016-team.jpg",
+        "coreTeam": [
+            {
+                "name": "",
+                "role": "President"
+            }
+        ],
+        "highlights": []
+    },
+    {
+        "year": "2014–15",
         "president": "PP. Rtr. Ajay Gopal",
-        "presidentImage": "/images/legacy/bhgdgh.png",
+        "presidentImage": "/images/legacy/president_1415.png",
         "secretary": "Tanya Agarwal",
         "teamPhoto": "/images/legacy/2016-team.jpg",
         "coreTeam": [
