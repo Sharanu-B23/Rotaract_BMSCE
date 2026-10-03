@@ -41,7 +41,7 @@ export default function HomePage() {
                     </h1>
 
                     <p className="max-w-2xl mx-auto text-base md:text-lg text-slate-200 font-light leading-relaxed mb-8">
-                        Empowering youth, executing high-impact community initiatives, and nurturing future leaders at BMS College of Engineering.
+                        Empowering young leaders to turn compassion into action and create meaningful change through service and fellowship.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

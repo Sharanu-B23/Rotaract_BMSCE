@@ -98,9 +98,10 @@ const BLOOD_GROUPS = [
 const CLUB_MEMBERSHIP = {
     code: "RM",
     name: "Club Membership (RM)",
-    shortTag: "Official BMSCE Club Member",
+    shortTag: "official rotaract BMSCE membership (RM)",
     fee: 320,
-    description: "Official annual Rotaract membership for BMSCE students. Grants complete access to campus drives, committees, leadership positions, verified volunteer hours, and flagship events.",
+    duration: "4 Years",
+    description: "Official 4-year Rotaract membership for BMSCE students. Grants complete access to campus drives, committees, leadership positions, verified volunteer hours, and flagship events throughout your 4-year tenure.",
     perks: [
         "Full access to all BMSCE campus projects, workshops, speaker sessions & fests",
         "Official club participation certificates & verified volunteering credit hours",
@@ -113,12 +114,12 @@ const CLUB_MEMBERSHIP = {
 
 const FAQS = [
     {
-        question: "What does the Club Membership (RM - ₹320) include?",
-        answer: "RM (Rotaract Club Member - ₹320) grants full official membership within BMSCE, including access to all campus initiatives, leadership development workshops, eligibility to chair event committees, official volunteering certificates with verified hours, and mentorship from senior club leaders and alumni."
+        question: "What does the Club Membership (RM - ₹320 for 4 years) include?",
+        answer: "Club Membership (RM - ₹320 for 4 years) grants full official Rotaract BMSCE membership across your 4-year tenure, including access to all campus initiatives, leadership development workshops, eligibility to chair event committees, official volunteering certificates with verified hours, and mentorship from senior club leaders and alumni."
     },
     {
         question: "How do I pay the ₹320 membership fee and verify my registration?",
-        answer: "Simply scan the UPI QR code on this page with any UPI app (Google Pay, PhonePe, Paytm, BHIM) to pay ₹320. Take a screenshot of the completed payment receipt and upload it directly in the form below the QR code. Your screenshot is saved in the club's Google Drive under your name for fast administrative verification."
+        answer: "Simply scan the UPI QR code on this page with any UPI app (Google Pay, PhonePe, Paytm, BHIM) to pay the ₹320 membership fee (covers 4 years). Take a screenshot of the completed payment receipt and upload it directly in the form below the QR code. Your screenshot is saved in the club's Google Drive under your name for fast administrative verification."
     },
     {
         question: "Where will my payment screenshot be saved?",
@@ -274,9 +275,12 @@ export default function JoinTheClubPage() {
             return;
         }
         if (!formData.payeeName.trim()) {
-            setFormValidationError("Please enter the Payee Name (account holder's name shown on the UPI payment screenshot).");
+            setFormValidationError("Please enter the Payee Name (mandatory account holder's name shown on the UPI payment screenshot).");
             const payeeEl = document.getElementById("payee-name-input");
-            if (payeeEl) payeeEl.scrollIntoView({ behavior: "smooth" });
+            if (payeeEl) {
+                payeeEl.focus();
+                payeeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
             return;
         }
 
@@ -527,7 +531,7 @@ export default function JoinTheClubPage() {
                                 Scan & Pay ₹320
                             </h4>
                             <p className="text-xs text-slate-500 font-light mt-1">
-                                Scan the official club UPI QR code with any UPI app to pay the ₹320 annual membership fee.
+                                Scan the official club UPI QR code with any UPI app to pay the ₹320 club membership fee for 4 years.
                             </p>
                         </div>
 
@@ -567,7 +571,7 @@ export default function JoinTheClubPage() {
                                 Rotaract Club of BMSCE Membership 2026–27
                             </h2>
                             <p className="text-slate-300 text-xs md:text-sm font-light mt-2 max-w-2xl">
-                                Complete your registration below. Club Membership (RM) carries an annual fee of ₹320. Both personal and college email IDs are required for official club roster registration.
+                                Complete your registration below. Club membership is ₹320 for 4 years (official rotaract BMSCE membership). Both personal and college email IDs are required for official club roster registration.
                             </p>
                         </div>
 
@@ -586,11 +590,11 @@ export default function JoinTheClubPage() {
                                     {/* Simple Membership Fee Notice */}
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-slate-700">Annual Club Membership:</span>
+                                            <span className="font-semibold text-slate-700">Club membership :</span>
                                             <span className="font-extrabold text-rotaract-cranberry text-sm">₹{payableAmount}</span>
-                                            <span className="text-slate-400">/ year</span>
+                                            <span className="text-slate-500 font-medium">for 4 years</span>
                                         </div>
-                                        <span className="text-slate-500 text-[11px]">Official BMSCE Club Member (RM)</span>
+                                        <span className="text-slate-500 text-[11px] font-medium">official rotaract BMSCE membership (RM)</span>
                                     </div>
 
                                     {/* SECTION 1: PERSONAL & COLLEGE INFORMATION */}
@@ -970,20 +974,21 @@ export default function JoinTheClubPage() {
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         {/* Payee Name (Mandatory) */}
                                                         <div>
-                                                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                                                                Payee Name (If paid online)
+                                                            <label htmlFor="payee-name-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                                                Payee Name *
                                                             </label>
                                                             <input
                                                                 id="payee-name-input"
                                                                 type="text"
                                                                 name="payeeName"
-                                                                placeholder="e.g. Rahul Sharma / Parent's Name (if paid online)"
+                                                                required
+                                                                placeholder="e.g. Rahul Sharma / Parent's Name"
                                                                 value={formData.payeeName}
                                                                 onChange={handleInputChange}
                                                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 font-medium transition-all"
                                                             />
                                                             <span className="block text-[11px] text-slate-400 mt-1">
-                                                                Name of person / UPI account from which payment was made
+                                                                Account holder&apos;s name as displayed in your UPI payment screenshot (Mandatory)
                                                             </span>
                                                         </div>
 
@@ -1020,7 +1025,7 @@ export default function JoinTheClubPage() {
                                                     {CLUB_MEMBERSHIP.name}
                                                 </p>
                                                 <p className="text-xs text-slate-500">
-                                                    Application logged to official Google Sheet & screenshot stored in Drive.
+                                                    ₹320 for 4 years • official rotaract BMSCE membership (RM)
                                                 </p>
                                             </div>
 
@@ -1029,6 +1034,7 @@ export default function JoinTheClubPage() {
                                                 <p className="text-3xl font-extrabold text-rotaract-cranberry font-heading">
                                                     ₹{payableAmount}
                                                 </p>
+                                                <span className="text-[11px] text-slate-400 block">for 4 years</span>
                                             </div>
                                         </div>
 
@@ -1184,7 +1190,7 @@ export default function JoinTheClubPage() {
                                             <div>
                                                 <span className="text-slate-400 block font-medium">Membership Tier:</span>
                                                 <span className="font-extrabold text-rotaract-navy text-sm">
-                                                    {receiptData?.membershipType}
+                                                    {receiptData?.membershipType} (4 Years)
                                                 </span>
                                             </div>
 
@@ -1216,7 +1222,7 @@ export default function JoinTheClubPage() {
                                         <div className="p-4 bg-rotaract-navy/5 rounded-2xl border border-rotaract-navy/10 flex items-center justify-between">
                                             <div>
                                                 <span className="text-xs text-slate-500 font-medium">Total Membership Fee</span>
-                                                <p className="text-xs text-slate-400">Membership Valid: 2026–2027</p>
+                                                <p className="text-xs text-slate-400">Membership Valid: 4 Years (2026–2030)</p>
                                             </div>
                                             <span className="text-2xl font-extrabold font-heading text-rotaract-cranberry">
                                                 ₹{receiptData?.amount}.00

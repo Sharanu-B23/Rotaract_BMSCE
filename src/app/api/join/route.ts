@@ -46,6 +46,13 @@ export async function POST(request: Request) {
             );
         }
 
+        if (!payeeName || !String(payeeName).trim()) {
+            return NextResponse.json(
+                { success: false, error: "Payee name is mandatory for online registration." },
+                { status: 400 }
+            );
+        }
+
         // Join Us Page applicant registrations: Strictly target the dedicated Join Sheet URL
         const joinSheetUrl =
             process.env.JOIN_SHEET_URL ||

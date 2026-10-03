@@ -3,15 +3,17 @@
  * ROTARACT CLUB OF BMSCE - ONLINE JOIN US REGISTRATION SCRIPT
  * =========================================================================================
  * 
- * Target Columns in Google Sheet:
+ * Target Columns in Google Sheet ("Join Us Registrations" Tab):
  * 1. Timestamp
  * 2. Full Name
- * 3. College Mail ID
- * 4. Personal Mail ID
- * 5. Year of Study
- * 6. Contact - WhatsApp
- * 7. Blood Group (If willing to donate blood anytime)
- * 8. Uploaded Screenshot
+ * 3. BMSCE USN
+ * 4. College Mail ID
+ * 5. Personal Mail ID
+ * 6. Year of Study
+ * 7. Contact - WhatsApp
+ * 8. Payee Name (UPI)
+ * 9. Blood Group - If willing to donate blood anytime
+ * 10. Uploaded Screenshot
  * =========================================================================================
  */
 
@@ -37,13 +39,15 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = getOrCreateSheetTab(ss, "Join Us Registrations", "#850028");
 
-    // 1. Extract the specific requested fields
+    // 1. Extract the specific applicant fields
     var timestamp = data.registeredAt || data.timestamp || new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
     var fullName = (data.fullName || data.name || "N/A").trim();
+    var usn = (data.usn || "N/A").trim().toUpperCase();
     var collegeEmail = (data.collegeEmail || data.email || "N/A").trim();
     var personalEmail = (data.personalEmail || "N/A").trim();
     var yearOfStudy = (data.yearOfStudy || data.academicYear || "1st Year").trim();
     var contactWhatsApp = (data.phone || data.contact || data.whatsapp || "N/A").trim();
+    var payeeName = (data.payeeName || "N/A").trim();
     
     // Blood Group (If willing to donate blood anytime)
     var bloodGroup = (data.bloodGroup || "").trim();
@@ -74,7 +78,7 @@ function doPost(e) {
 
         var ext = (mimeType.indexOf("pdf") !== -1) ? "pdf" : (mimeType.indexOf("jpeg") !== -1 || mimeType.indexOf("jpg") !== -1) ? "jpg" : "png";
         var cleanName = fullName.replace(/[^a-zA-Z0-9 ]/g, "").trim() || "Member";
-        var fileName = cleanName + " - (" + (data.usn || "USN") + ") - Payment Screenshot." + ext;
+        var fileName = cleanName + " - (" + usn + ") - Payment Screenshot." + ext;
 
         var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
         var file = folder.createFile(blob);
@@ -85,17 +89,54 @@ function doPost(e) {
       }
     }
 
-    // 3. Prepare row data with ONLY the requested columns
-    var rowData = [
-      timestamp,
-      fullName,
-      collegeEmail,
-      personalEmail,
-      yearOfStudy,
-      contactWhatsApp,
-      bloodGroup,
-      driveScreenshotUrl
-    ];
+    // 3. Dynamic header-aware row data builder
+    // This safely maps fields into existing sheets (even if columns were in a different order or missing)
+    var lastCol = sheet.getLastColumn();
+    var existingHeaders = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+
+    var rowData = [];
+    if (existingHeaders.length > 0) {
+      for (var i = 0; i < existingHeaders.length; i++) {
+        var h = String(existingHeaders[i]).toLowerCase().trim();
+        if (h.indexOf("time") !== -1 || h.indexOf("date") !== -1) {
+          rowData.push(timestamp);
+        } else if (h.indexOf("usn") !== -1) {
+          rowData.push(usn);
+        } else if (h.indexOf("full name") !== -1 || h === "name" || h.indexOf("student") !== -1) {
+          rowData.push(fullName);
+        } else if (h.indexOf("college") !== -1) {
+          rowData.push(collegeEmail);
+        } else if (h.indexOf("personal") !== -1) {
+          rowData.push(personalEmail);
+        } else if (h.indexOf("year") !== -1) {
+          rowData.push(yearOfStudy);
+        } else if (h.indexOf("contact") !== -1 || h.indexOf("whatsapp") !== -1 || h.indexOf("phone") !== -1) {
+          rowData.push(contactWhatsApp);
+        } else if (h.indexOf("payee") !== -1) {
+          rowData.push(payeeName);
+        } else if (h.indexOf("blood") !== -1) {
+          rowData.push(bloodGroup);
+        } else if (h.indexOf("screenshot") !== -1 || h.indexOf("drive") !== -1 || h.indexOf("upload") !== -1) {
+          rowData.push(driveScreenshotUrl);
+        } else {
+          rowData.push("");
+        }
+      }
+    } else {
+      // Default standard row structure
+      rowData = [
+        timestamp,
+        fullName,
+        usn,
+        collegeEmail,
+        personalEmail,
+        yearOfStudy,
+        contactWhatsApp,
+        payeeName,
+        bloodGroup,
+        driveScreenshotUrl
+      ];
+    }
 
     sheet.appendRow(rowData);
 
@@ -130,15 +171,17 @@ function getOrCreateSheetTab(ss, tabName, headerColor) {
     sheet = ss.insertSheet(tabName);
   }
 
-  // If newly created or empty, add the exact requested headers
+  // If newly created or empty, add the exact standard headers
   if (sheet.getLastRow() === 0) {
     var headers = [
       "Timestamp",
       "Full Name",
+      "BMSCE USN",
       "College Mail ID",
       "Personal Mail ID",
       "Year of Study",
       "Contact - WhatsApp",
+      "Payee Name (UPI)",
       "Blood Group - If willing to donate blood anytime",
       "Uploaded Screenshot"
     ];
