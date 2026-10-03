@@ -413,8 +413,6 @@ export default function JoinTheClubPage() {
                         className="max-w-3xl mx-auto text-slate-300 text-sm md:text-lg font-light leading-relaxed"
                     >
                         Become an official member of the Rotaract Club of BMS College of Engineering (RI District 3191).
-                        Complete your annual Club Membership (RM) registration for ₹320, scan the UPI QR code,
-                        upload your payment screenshot, and join a legacy of leadership.
                     </motion.p>
                 </div>
             </section>
