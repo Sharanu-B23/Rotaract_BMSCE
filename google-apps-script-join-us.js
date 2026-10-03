@@ -1,115 +1,160 @@
 /**
  * =========================================================================================
- * ROTARACT CLUB OF BMSCE - SIMULTANEOUS MULTI-DEVICE MEMBER REGISTRATION HANDLER
+ * ROTARACT CLUB OF BMSCE - ONLINE JOIN US REGISTRATION SCRIPT
  * =========================================================================================
  * 
- * Features:
- * 1. Concurrency Protected: 3+ people can register members at the exact same second without clashes.
- * 2. Dedicated Sheet Tab per Device: Automatically routes each registration to that device's tab:
- *    - "Desk 1 (Sharan)"
- *    - "Desk 2 (Samyak)"
- *    - "Desk 3 (Himashree)"
- *    - (Or any custom desk selected)
- * 3. Master Consolidated Tab: Also logs into "Master Registry" for a unified club member database.
- * 4. Auto Header Creation: If any tab is newly created, it automatically formats and colors the headers.
- * 5. Drive Screenshot Backup: Automatically saves payment screenshots into your Google Drive.
+ * Target Columns in Google Sheet ("Join Us Registrations" Tab):
+ * 1. Timestamp
+ * 2. Full Name
+ * 3. BMSCE USN
+ * 4. College Mail ID
+ * 5. Personal Mail ID
+ * 6. Year of Study
+ * 7. Contact - WhatsApp
+ * 8. Payee Name (UPI)
+ * 9. Blood Group - If willing to donate blood anytime
+ * 10. Uploaded Screenshot
  * =========================================================================================
  */
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
   try {
-    // Wait up to 30 seconds for concurrent requests from simultaneous devices
+    // Wait up to 30 seconds for concurrent requests from simultaneous visitors
     lock.waitLock(30000);
 
     if (!e || !e.postData || !e.postData.contents) {
       return ContentService.createTextOutput(
-        JSON.stringify({ result: "error", message: "No data received." })
+        JSON.stringify({ result: "error", message: "No post data received." })
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
-    var data = JSON.parse(e.postData.contents);
+    var data;
+    try {
+      data = JSON.parse(e.postData.contents);
+    } catch (parseErr) {
+      data = e.parameter || {};
+    }
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = getOrCreateSheetTab(ss, "Join Us Registrations", "#850028");
 
-    // 1. Identify which desk / device submitted this
-    var deskName = (data.desk || data.device || "Desk 1 (Sharan)").trim();
+    // 1. Extract the specific applicant fields
+    var timestamp = data.registeredAt || data.timestamp || new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+    var fullName = (data.fullName || data.name || "N/A").trim();
+    var usn = (data.usn || "N/A").trim().toUpperCase();
+    var collegeEmail = (data.collegeEmail || data.email || "N/A").trim();
+    var personalEmail = (data.personalEmail || "N/A").trim();
+    var yearOfStudy = (data.yearOfStudy || data.academicYear || "1st Year").trim();
+    var contactWhatsApp = (data.phone || data.contact || data.whatsapp || "N/A").trim();
+    var payeeName = (data.payeeName || "N/A").trim();
+    
+    // Blood Group (If willing to donate blood anytime)
+    var bloodGroup = (data.bloodGroup || "").trim();
+    if (!bloodGroup || bloodGroup === "Not Specified" || bloodGroup === "") {
+      bloodGroup = "Not willing / Not specified";
+    }
 
-    // 2. Handle Payment Screenshot (if uploaded from Join Us)
-    var driveScreenshotUrl = "N/A";
-    if (data.screenshotBase64 && data.screenshotBase64.indexOf("base64,") !== -1) {
+    // 2. Process and Upload Payment Screenshot to Google Drive
+    var driveScreenshotUrl = "No screenshot attached";
+    var rawScreenshot = data.screenshotBase64 || data.screenshot || "";
+
+    if (rawScreenshot && typeof rawScreenshot === "string" && rawScreenshot.length > 50) {
       try {
         var folder = getOrCreateFolder("Rotaract BMSCE Payment Screenshots");
-        var parts = data.screenshotBase64.split("base64,");
-        var metaPart = parts[0];
-        var base64Data = parts[1];
-        var mimeMatch = metaPart.match(/:(.*?);/);
-        var mimeType = mimeMatch ? mimeMatch[1] : "image/png";
-        var ext = (mimeType.indexOf("pdf") !== -1) ? "pdf" : "png";
-        var fileName = (data.fullName || "Member") + " - (" + (data.usn || "USN") + ") - Payment Screenshot." + ext;
+
+        var mimeType = "image/png";
+        var base64Data = rawScreenshot;
+
+        if (rawScreenshot.indexOf("base64,") !== -1) {
+          var parts = rawScreenshot.split("base64,");
+          var metaPart = parts[0];
+          base64Data = parts[1];
+          var mimeMatch = metaPart.match(/:(.*?);/);
+          if (mimeMatch) {
+            mimeType = mimeMatch[1];
+          }
+        }
+
+        var ext = (mimeType.indexOf("pdf") !== -1) ? "pdf" : (mimeType.indexOf("jpeg") !== -1 || mimeType.indexOf("jpg") !== -1) ? "jpg" : "png";
+        var cleanName = fullName.replace(/[^a-zA-Z0-9 ]/g, "").trim() || "Member";
+        var fileName = cleanName + " - (" + usn + ") - Payment Screenshot." + ext;
+
         var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
         var file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         driveScreenshotUrl = file.getUrl();
       } catch (fErr) {
-        driveScreenshotUrl = "Error saving screenshot";
+        driveScreenshotUrl = "Error saving screenshot: " + fErr.toString();
       }
     }
 
-    // 3. Prepare Member Data Row
-    var timestamp = data.timestamp || new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-    var receiptId = data.receiptId || ("RTR-ADM-" + new Date().getTime().toString().slice(-6));
-    var fullName = data.fullName || "N/A";
-    var usn = (data.usn || "N/A").toUpperCase();
-    var collegeEmail = data.collegeEmail || data.email || "N/A";
-    var personalEmail = data.personalEmail || "N/A";
-    var yearOfStudy = data.yearOfStudy || data.academicYear || "N/A";
-    var phone = data.phone || "N/A";
-    var bloodGroup = data.bloodGroup || "Prefer not to say";
-    var membershipType = data.membershipType || "RI - Rotary International membership";
-    var payeeName = data.payeeName || "N/A";
-    var feeAmount = data.amount || (membershipType.indexOf("RI") !== -1 ? 800 : 320);
-    var transactionId = data.transactionId || "N/A";
-    var registeredBy = data.addedBy || deskName;
+    // 3. Dynamic header-aware row data builder
+    // This safely maps fields into existing sheets (even if columns were in a different order or missing)
+    var lastCol = sheet.getLastColumn();
+    var existingHeaders = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
 
-    var rowData = [
-      timestamp,
-      receiptId,
-      fullName,
-      usn,
-      collegeEmail,
-      personalEmail,
-      yearOfStudy,
-      phone,
-      bloodGroup,
-      membershipType,
-      payeeName,
-      feeAmount,
-      transactionId,
-      driveScreenshotUrl,
-      registeredBy,
-      deskName
-    ];
+    var rowData = [];
+    if (existingHeaders.length > 0) {
+      for (var i = 0; i < existingHeaders.length; i++) {
+        var h = String(existingHeaders[i]).toLowerCase().trim();
+        if (h.indexOf("time") !== -1 || h.indexOf("date") !== -1) {
+          rowData.push(timestamp);
+        } else if (h.indexOf("usn") !== -1) {
+          rowData.push(usn);
+        } else if (h.indexOf("full name") !== -1 || h === "name" || h.indexOf("student") !== -1) {
+          rowData.push(fullName);
+        } else if (h.indexOf("college") !== -1) {
+          rowData.push(collegeEmail);
+        } else if (h.indexOf("personal") !== -1) {
+          rowData.push(personalEmail);
+        } else if (h.indexOf("year") !== -1) {
+          rowData.push(yearOfStudy);
+        } else if (h.indexOf("contact") !== -1 || h.indexOf("whatsapp") !== -1 || h.indexOf("phone") !== -1) {
+          rowData.push(contactWhatsApp);
+        } else if (h.indexOf("payee") !== -1) {
+          rowData.push(payeeName);
+        } else if (h.indexOf("blood") !== -1) {
+          rowData.push(bloodGroup);
+        } else if (h.indexOf("screenshot") !== -1 || h.indexOf("drive") !== -1 || h.indexOf("upload") !== -1) {
+          rowData.push(driveScreenshotUrl);
+        } else {
+          rowData.push("");
+        }
+      }
+    } else {
+      // Default standard row structure
+      rowData = [
+        timestamp,
+        fullName,
+        usn,
+        collegeEmail,
+        personalEmail,
+        yearOfStudy,
+        contactWhatsApp,
+        payeeName,
+        bloodGroup,
+        driveScreenshotUrl
+      ];
+    }
 
-    // 4. Log to Dedicated Device / Desk Tab
-    var deskSheet = getOrCreateSheetTab(ss, deskName, "#850028");
-    deskSheet.appendRow(rowData);
+    sheet.appendRow(rowData);
 
-    // 5. Also log to Master Registry tab (consolidated list of all 3 devices)
-    var masterSheet = getOrCreateSheetTab(ss, "Master Registry", "#1E293B");
-    masterSheet.appendRow(rowData);
+    var responsePayload = {
+      result: "success",
+      success: true,
+      receiptId: data.receiptId || "",
+      fileUrl: driveScreenshotUrl,
+      driveUrl: driveScreenshotUrl,
+      message: "Registration successfully recorded into Google Sheet."
+    };
 
-    return ContentService.createTextOutput(
-      JSON.stringify({
-        result: "success",
-        receiptId: receiptId,
-        desk: deskName,
-        message: "Registration recorded into " + deskName + " and Master Registry."
-      })
-    ).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify(responsePayload))
+      .setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
     return ContentService.createTextOutput(
-      JSON.stringify({ result: "error", error: error.toString() })
+      JSON.stringify({ result: "error", success: false, error: error.toString() })
     ).setMimeType(ContentService.MimeType.JSON);
 
   } finally {
@@ -118,7 +163,7 @@ function doPost(e) {
 }
 
 /**
- * Helper to get an existing sheet tab or create a new one with styled headers
+ * Helper to get the target sheet tab or create it with customized headers
  */
 function getOrCreateSheetTab(ss, tabName, headerColor) {
   var sheet = ss.getSheetByName(tabName);
@@ -126,39 +171,39 @@ function getOrCreateSheetTab(ss, tabName, headerColor) {
     sheet = ss.insertSheet(tabName);
   }
 
-  // If newly created or empty, add headers
+  // If newly created or empty, add the exact standard headers
   if (sheet.getLastRow() === 0) {
     var headers = [
       "Timestamp",
-      "Receipt ID",
       "Full Name",
-      "USN",
-      "College Email ID",
-      "Personal Email ID",
+      "BMSCE USN",
+      "College Mail ID",
+      "Personal Mail ID",
       "Year of Study",
-      "Phone (WhatsApp Enabled)",
-      "Blood Group",
-      "Type of Membership",
-      "Payee Name (If paid online)",
-      "Fee Amount (INR)",
-      "Transaction Ref / UTR",
-      "Payment Screenshot (Drive Link)",
-      "Registered By",
-      "Device / Desk"
+      "Contact - WhatsApp",
+      "Payee Name (UPI)",
+      "Blood Group - If willing to donate blood anytime",
+      "Uploaded Screenshot"
     ];
     sheet.appendRow(headers);
+    
     var headerRange = sheet.getRange(1, 1, 1, headers.length);
     headerRange.setBackground(headerColor || "#850028");
     headerRange.setFontColor("#FFFFFF");
     headerRange.setFontWeight("bold");
     sheet.setFrozenRows(1);
+    
+    // Auto-fit columns for clean presentation
+    for (var c = 1; c <= headers.length; c++) {
+      sheet.autoResizeColumn(c);
+    }
   }
 
   return sheet;
 }
 
 /**
- * Helper to get or create Google Drive folder
+ * Helper to get or create Google Drive folder for payment screenshots
  */
 function getOrCreateFolder(folderName) {
   var folders = DriveApp.getFoldersByName(folderName);
@@ -169,5 +214,7 @@ function getOrCreateFolder(folderName) {
 }
 
 function doGet(e) {
-  return ContentService.createTextOutput("Rotaract BMSCE Multi-Device Registration Service is active.");
+  return ContentService.createTextOutput(
+    JSON.stringify({ status: "active", message: "Rotaract BMSCE Join Us Webhook Service is active." })
+  ).setMimeType(ContentService.MimeType.JSON);
 }

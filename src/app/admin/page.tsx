@@ -18,7 +18,6 @@ import {
     AlertCircle,
     Upload,
     Image as ImageIcon,
-    Key,
     ExternalLink,
     Clock,
     Laptop
@@ -43,23 +42,7 @@ interface EventItem {
 export default function AdminPortalPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [adminUserEmail, setAdminUserEmail] = useState<string>("");
-    const [loginTab, setLoginTab] = useState<"passcode" | "google">("passcode");
-    const [selectedAdminProfile, setSelectedAdminProfile] = useState<string>("rtrsharan318@gmail.com");
-    const [customAdminEmail, setCustomAdminEmail] = useState<string>("");
-    const [passcode, setPasscode] = useState("");
     const [loginError, setLoginError] = useState("");
-
-    // Allowed Admin profiles configured in .env.local
-    const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "";
-    const allowedEmails = allowedEmailsEnv
-        .split(",")
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
-    const adminProfiles = allowedEmails.length > 0 ? allowedEmails : [
-        "rtrsharan318@gmail.com",
-        "rtrsamyakr@gmail.com",
-        "rtrhimashree@gmail.com"
-    ];
 
     // Active Tab: 'members' | 'events'
     const [activeTab, setActiveTab] = useState<"members" | "events">("members");
@@ -147,10 +130,17 @@ export default function AdminPortalPage() {
 
                 // Get configured allowed emails list
                 const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "";
-                const allowedEmails = allowedEmailsEnv
+                const configuredAllowedEmails = allowedEmailsEnv
                     .split(",")
                     .map((e) => e.trim().toLowerCase())
                     .filter(Boolean);
+                const defaultAllowedEmails = [
+                    "rtrsharan318@gmail.com",
+                    "rtrsamyakr@gmail.com",
+                    "rtrhimashree@gmail.com",
+                ];
+                const allowedEmails =
+                    configuredAllowedEmails.length > 0 ? configuredAllowedEmails : defaultAllowedEmails;
 
                 // If whitelist is set, enforce matching
                 if (allowedEmails.length > 0 && !allowedEmails.includes(userEmail)) {
@@ -186,37 +176,6 @@ export default function AdminPortalPage() {
         },
         prompt: "select_account",
     });
-
-    // Handle Passcode Login
-    const handlePasscodeLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoginError("");
-
-        const chosenEmail = (selectedAdminProfile === "custom" ? customAdminEmail : selectedAdminProfile).trim().toLowerCase();
-
-        if (!chosenEmail) {
-            setLoginError("Please choose or enter an authorized admin email address.");
-            return;
-        }
-
-        const expectedPasscode = process.env.NEXT_PUBLIC_ADMIN_PASSCODE || "rotaract2026";
-
-        if (!passcode) {
-            setLoginError("Please enter your admin passcode.");
-            return;
-        }
-
-        if (passcode.trim() !== expectedPasscode.trim()) {
-            setLoginError("Incorrect admin passcode. (Default: rotaract2026)");
-            return;
-        }
-
-        localStorage.setItem("rotaract_admin_auth", "true");
-        localStorage.setItem("rotaract_admin_user", chosenEmail);
-        setAdminUserEmail(chosenEmail);
-        setIsAuthenticated(true);
-        setLoginError("");
-    };
 
     // Restore existing admin session on mount
     useEffect(() => {
@@ -268,17 +227,6 @@ export default function AdminPortalPage() {
         setMemberError("");
         setMemberSubmittedSuccess(false);
 
-        const memberSheetUrl =
-            process.env.NEXT_PUBLIC_JOIN_SHEET_URL ||
-            process.env.NEXT_PUBLIC_MEMBER_SHEET_URL ||
-            process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
-
-        if (!memberSheetUrl) {
-            setMemberError("Sheet webhook URL is missing in environment variables.");
-            setIsSubmittingMember(false);
-            return;
-        }
-
         const now = new Date();
         const currentTimestamp =
             (memberForm.timestamp && memberForm.timestamp.trim()) ||
@@ -288,7 +236,7 @@ export default function AdminPortalPage() {
             });
 
         try {
-            const payload = JSON.stringify({
+            const payload = {
                 type: "NEW_MEMBER_REGISTRATION",
                 receiptId: `RTR-ADM-${Date.now().toString().slice(-6)}`,
                 desk: registrationDesk,
@@ -305,16 +253,20 @@ export default function AdminPortalPage() {
                 amount: memberForm.membershipType.startsWith("RI") ? 800 : 320,
                 timestamp: currentTimestamp,
                 registeredAt: currentTimestamp,
-                addedBy: adminUserEmail || "Admin",
+                addedBy: adminUserEmail || registrationDesk,
+            };
+
+            const response = await fetch("/api/admin/register-member", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
             });
 
-            // Send payload as text/plain to bypass CORS preflight restrictions in Google Apps Script
-            await fetch(memberSheetUrl, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "text/plain" },
-                body: payload,
-            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || "Failed to record member registration into Google Sheet.");
+            }
 
             setIsSubmittingMember(false);
             setMemberSubmittedSuccess(true);
@@ -417,160 +369,50 @@ export default function AdminPortalPage() {
                         </p>
                     </div>
 
-                    {/* Login Tab Switcher */}
-                    <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setLoginTab("passcode");
-                                setLoginError("");
-                            }}
-                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                                loginTab === "passcode"
-                                    ? "bg-white text-rotaract-navy shadow-sm"
-                                    : "text-slate-500 hover:text-slate-800"
-                            }`}
-                        >
-                            <Key className="w-3.5 h-3.5 text-rotaract-gold" />
-                            <span>Admin Passcode</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setLoginTab("google");
-                                setLoginError("");
-                            }}
-                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                                loginTab === "google"
-                                    ? "bg-white text-rotaract-navy shadow-sm"
-                                    : "text-slate-500 hover:text-slate-800"
-                            }`}
-                        >
-                            <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                            </svg>
-                            <span>Google OAuth</span>
-                        </button>
-                    </div>
+                    <p className="text-xs text-slate-600 text-center leading-relaxed">
+                        Please sign in with your authorized Google account to manage member registrations and live events.
+                    </p>
 
                     {loginError && (
-                        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                            <span>{loginError}</span>
+                        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-start gap-2.5">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span className="leading-snug">{loginError}</span>
                         </div>
                     )}
 
-                    {/* TAB 1: PASSCODE LOGIN */}
-                    {loginTab === "passcode" && (
-                        <form onSubmit={handlePasscodeLogin} className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-700">Choose Admin Email</label>
-                                <select
-                                    value={selectedAdminProfile}
-                                    onChange={(e) => setSelectedAdminProfile(e.target.value)}
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-gold"
-                                >
-                                    {adminProfiles.map((email) => (
-                                        <option key={email} value={email}>
-                                            {email} {email === "rtrsharan318@gmail.com" ? "★ (Lead Admin)" : "(Board Admin)"}
-                                        </option>
-                                    ))}
-                                    <option value="custom">Enter custom admin email...</option>
-                                </select>
-                            </div>
-
-                            {selectedAdminProfile === "custom" && (
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700">Custom Admin Email</label>
-                                    <input
-                                        type="email"
-                                        placeholder="admin@rotaractbmsce.org"
-                                        value={customAdminEmail}
-                                        onChange={(e) => setCustomAdminEmail(e.target.value)}
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-gold"
-                                    />
-                                </div>
+                    <div className="space-y-4 pt-1">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setLoginError("");
+                                loginWithGoogle({ prompt: "select_account" });
+                            }}
+                            disabled={isAuthenticating}
+                            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-2xl shadow-sm hover:shadow text-sm font-semibold text-slate-700 transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+                        >
+                            {isAuthenticating ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin text-rotaract-cranberry" />
+                                    <span>Verifying Google Account...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                                    </svg>
+                                    <span>Sign in with Google</span>
+                                </>
                             )}
+                        </button>
 
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-xs font-semibold text-slate-700">Admin Passcode</label>
-                                    <span className="text-[10px] text-slate-400 font-mono">rotaract2026</span>
-                                </div>
-                                <input
-                                    type="password"
-                                    placeholder="Enter admin passcode"
-                                    value={passcode}
-                                    onChange={(e) => setPasscode(e.target.value)}
-                                    required
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-gold"
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                className="w-full py-3 bg-rotaract-navy hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
-                            >
-                                <ShieldCheck className="w-4 h-4 text-rotaract-gold" />
-                                <span>Sign In to Admin Dashboard</span>
-                            </button>
-
-                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
-                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                                <span>Instant local login for whitelisted Rotaract BMSCE admins</span>
-                            </div>
-                        </form>
-                    )}
-
-                    {/* TAB 2: GOOGLE OAUTH */}
-                    {loginTab === "google" && (
-                        <div className="space-y-4">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setLoginError("");
-                                    loginWithGoogle({ prompt: "select_account" });
-                                }}
-                                disabled={isAuthenticating}
-                                className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-2xl shadow-sm hover:shadow text-sm font-semibold text-slate-700 transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
-                            >
-                                {isAuthenticating ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin text-rotaract-cranberry" />
-                                        <span>Verifying Google Account...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                                        </svg>
-                                        <span>Sign in with Google</span>
-                                    </>
-                                )}
-                            </button>
-
-                            {/* Origin mismatch troubleshooting guide */}
-                            <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 space-y-2 leading-relaxed">
-                                <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                                    <span>Seeing "Error 400: origin_mismatch"?</span>
-                                </div>
-                                <p className="text-slate-600">
-                                    Google OAuth rejects the popup before showing the account picker because <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">http://localhost:3000</code> is not registered in Google Cloud Console.
-                                </p>
-                                <p className="text-slate-700 font-medium">
-                                    💡 <strong>Instant fix:</strong> Switch to the <button type="button" onClick={() => setLoginTab("passcode")} className="text-rotaract-navy underline font-bold">Admin Passcode</button> tab above to log in immediately with your whitelisted email!
-                                </p>
-                            </div>
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                            <span>Access restricted to authorized club board members</span>
                         </div>
-                    )}
+                    </div>
                 </motion.div>
             </div>
         );

@@ -22,7 +22,7 @@
             "yearsRunning": "Since 2 Years",
             "description": "A flagship community outreach program dedicated to spreading joy and providing essential supplies to underserved communities during festive seasons.",
             "image": "/images/showcase/kkd.jpeg",
-            "stats": "500+ Dabbas Delivered"
+            "stats": "1100+ Dabbas Delivered"
         },
         {
             "id": "kali-kannada",
@@ -38,7 +38,7 @@
             "yearsRunning": "Since 3 Years",
             "description": "Ankuram is a 3-day initiative where Rotaract volunteers visit government schools and teach students through co-curricular activities.",
             "image": "/images/showcase/ankuram.jpeg",
-            "stats": ""
+            "stats": "250+ Beneficiaries"
         }
     ],
     "events": [
@@ -76,6 +76,50 @@
             "impact": "80+ Participants"
         },
         {
+            "id": "kadlekayi-parische",
+            "title": "Kadlekayi Parishe",
+            "date": "2025-11-12",
+            "formattedDate": "November 12, 2025",
+            "category": "Public Image",
+            "shortDescription": "An environmental initiative promoting plastic-free practices through eco-friendly paper bags, vendor awareness, and a festival-wide plogathon.",
+            "image": "/images/showcase/events/kadlekayiParishe.jpeg",
+            "location": "BMSCE",
+            "impact": "5000+ paper bags distributed"
+        },
+        {
+            "id": "santa-bow-wow",
+            "title": "Santa Bow-Wow",
+            "date": "2025-12-21",
+            "formattedDate": "December 21, 2025",
+            "category": "S.P.A.W",
+            "shortDescription": "A festive celebration promoting animal welfare through fun activities, responsible pet ownership, and a puppy adoption drive.",
+            "image": "/images/showcase/events/santabow.jpeg",
+            "location": "Cubbon Park",
+            "impact": "20+ Paws"
+        },
+        {
+            "id": "collars-of-care",
+            "title": "Collars of Care",
+            "date": "2025-12-15",
+            "formattedDate": "December 15, 2025",
+            "category": "S.P.A.W",
+            "shortDescription": "A community-driven initiative using reflective collars to improve street dogs' visil=bility at night and reduce road-accident risks.",
+            "image": "/images/showcase/events/collars-of-care.jpeg",
+            "location": "Streets of Basavanagudi",
+            "impact": "50 Paws"
+        },
+        {
+            "id": "pawlentines",
+            "title": "Paw-Lentine's Day",
+            "date": "2025-02-15",
+            "formattedDate": "February 15, 2025",
+            "category": "S.P.A.W",
+            "shortDescription": "A valentine's celebration for dogs promoting love, responsible pet ownership, and adoption, with three puppies finding forever homes.",
+            "image": "/images/showcase/events/pawlentines-day.jpeg",
+            "location": "Cubbon Park",
+            "impact": "15 Paws"
+        },
+        {
             "id": "kits-of-care",
             "title": "Kits Of Care",
             "date": "2026-03-29",
@@ -84,7 +128,7 @@
             "shortDescription": "A heartwarming initiative dedicated to providing essential care packages to those in need. Through Kits of Care, we distribute hygiene products, food supplies, and other daily necessities, ensuring that vulnerable communities receive the support they deserve.",
             "image": "/images/showcase/events/kitsOfCare.jpeg",
             "location": "Makkala Dhama Orphanage",
-            "impact": "120 Children Reached"
+            "impact": "20 Kits Distributed"
         },
         {
             "id": "humans-of-rotaract",
@@ -106,7 +150,7 @@
             "shortDescription": "Virtual fellowship session exploring cultural traditions and youth action with Rotaract Munich.",
             "image": "/images/showcase/events/dhanyawadaGurus.jpeg",
             "location": "BMSCE",
-            "impact": ""
+            "impact": "200+ Faculties"
         },
         {
             "id": "project-vidya",
@@ -116,7 +160,7 @@
             "category": "Community Service",
             "shortDescription": "An impactful initiative ",
             "image": "/images/showcase/events/projectVidya.jpeg",
-            "location": "Makkala Dhama Orphanage",
+            "location": "Bairanayakanapalya Government school, Channapattana",
             "impact": ""
         },
         {

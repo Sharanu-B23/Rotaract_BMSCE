@@ -26,7 +26,7 @@ const PAST_ISSUES: NewsletterIssue[] = [
         monthYear: "2025",
         summary: "The second edition of our official newsletter for 2025 highlighting community initiatives, flagship club events, leadership drives, and impactful member stories.",
         coverImage: "/images/newsletter2.png",
-        pdfUrl: "https://drive.google.com",
+        pdfUrl: "https://heyzine.com/flip-book/e9c9859e6f.html",
         isFeatured: true,
     },
     {
