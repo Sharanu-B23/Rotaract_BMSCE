@@ -31,6 +31,14 @@ export async function POST(request: Request) {
             );
         }
 
+        const cleanPhone = String(phone).trim().replace(/\D/g, "");
+        if (cleanPhone.length !== 10) {
+            return NextResponse.json(
+                { success: false, error: "Please enter a valid 10-digit WhatsApp / phone number." },
+                { status: 400 }
+            );
+        }
+
         if (!screenshotBase64) {
             return NextResponse.json(
                 { success: false, error: "Payment screenshot is required." },

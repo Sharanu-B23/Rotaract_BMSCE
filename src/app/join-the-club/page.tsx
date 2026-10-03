@@ -164,7 +164,13 @@ export default function JoinTheClubPage() {
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        if (name === "phone") {
+            // Only allow numbers and cap at 10 digits
+            const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+            setFormData((prev) => ({ ...prev, [name]: digitsOnly }));
+        } else {
+            setFormData((prev) => ({ ...prev, [name]: value }));
+        }
         if (formValidationError) setFormValidationError("");
     };
 
@@ -254,8 +260,11 @@ export default function JoinTheClubPage() {
             setFormValidationError("Please enter your College Email Address (e.g. name@bmsce.ac.in).");
             return;
         }
-        if (!formData.phone.trim() || formData.phone.length < 10) {
+        const cleanPhone = formData.phone.trim().replace(/\D/g, "");
+        if (!cleanPhone || cleanPhone.length !== 10) {
             setFormValidationError("Please enter a valid 10-digit WhatsApp / Phone Number.");
+            const phoneEl = document.getElementById("phone-input");
+            if (phoneEl) phoneEl.scrollIntoView({ behavior: "smooth" });
             return;
         }
         if (!screenshotBase64) {
@@ -665,18 +674,32 @@ export default function JoinTheClubPage() {
 
                                             {/* Phone / WhatsApp */}
                                             <div>
-                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                                <label htmlFor="phone-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                                     WhatsApp / Contact Number *
                                                 </label>
-                                                <input
-                                                    type="tel"
-                                                    name="phone"
-                                                    required
-                                                    placeholder="e.g. 9876543210"
-                                                    value={formData.phone}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all"
-                                                />
+                                                <div className="relative">
+                                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">
+                                                        +91
+                                                    </span>
+                                                    <input
+                                                        id="phone-input"
+                                                        type="tel"
+                                                        name="phone"
+                                                        required
+                                                        inputMode="numeric"
+                                                        maxLength={10}
+                                                        pattern="[0-9]{10}"
+                                                        placeholder="9876543210"
+                                                        value={formData.phone}
+                                                        onChange={handleInputChange}
+                                                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all font-mono"
+                                                    />
+                                                </div>
+                                                {formData.phone && formData.phone.length > 0 && formData.phone.length < 10 && (
+                                                    <p className="text-[11px] text-amber-600 mt-1 font-medium">
+                                                        {10 - formData.phone.length} more digit{10 - formData.phone.length === 1 ? "" : "s"} required (10 digits needed)
+                                                    </p>
+                                                )}
                                             </div>
 
                                             {/* Year of Study */}
