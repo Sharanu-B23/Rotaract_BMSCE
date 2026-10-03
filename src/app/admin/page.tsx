@@ -20,9 +20,17 @@ import {
     Image as ImageIcon,
     ExternalLink,
     Clock,
-    Laptop
+    Laptop,
+    QrCode,
+    RotateCcw,
+    Check,
+    Copy,
+    Download,
+    RefreshCw,
+    Eye
 } from "lucide-react";
 import upcomingEventsRaw from "@/data/upcomingEvents.json";
+import paymentSettingsRaw from "@/data/paymentSettings.json";
 
 interface EventItem {
     id: string;
@@ -44,8 +52,8 @@ export default function AdminPortalPage() {
     const [adminUserEmail, setAdminUserEmail] = useState<string>("");
     const [loginError, setLoginError] = useState("");
 
-    // Active Tab: 'members' | 'events'
-    const [activeTab, setActiveTab] = useState<"members" | "events">("members");
+    // Active Tab: 'members' | 'qrcode' | 'events'
+    const [activeTab, setActiveTab] = useState<"members" | "qrcode" | "events">("members");
 
     // --- MEMBER REGISTRATION FORM STATE ---
     const [memberForm, setMemberForm] = useState({
@@ -205,6 +213,210 @@ export default function AdminPortalPage() {
     const saveEventsToStorage = (updatedList: EventItem[]) => {
         setEventsList(updatedList);
         localStorage.setItem("rotaract_events_data", JSON.stringify(updatedList));
+    };
+
+    // --- QR CODE & PAYMENT CONFIG STATE ---
+    const [qrConfig, setQrConfig] = useState({
+        qrImageUrl: paymentSettingsRaw.qrImageUrl || "/images/payment-qr.jpeg",
+        upiId: paymentSettingsRaw.upiId || "vaishnavisrinivasa26-1@oksbi",
+        payeeName: paymentSettingsRaw.payeeName || "Rotaract Club BMSCE",
+        amount: Number(paymentSettingsRaw.amount) || 320,
+        notes: paymentSettingsRaw.notes || "Scan with any UPI app to pay ₹320 4-year club membership fee.",
+        lastUpdated: paymentSettingsRaw.lastUpdated || "",
+        updatedBy: paymentSettingsRaw.updatedBy || "",
+        qrMode: ((paymentSettingsRaw as any).qrMode as "custom_image" | "dynamic_upi" | "default") || "default",
+    });
+    const [previewQrImage, setPreviewQrImage] = useState<string>(
+        paymentSettingsRaw.qrImageUrl || "/images/payment-qr.jpeg"
+    );
+    const [selectedQrMode, setSelectedQrMode] = useState<"custom_image" | "dynamic_upi" | "default">(
+        (paymentSettingsRaw as any).qrMode === "dynamic_upi" ? "dynamic_upi" : "custom_image"
+    );
+    const [isSavingQr, setIsSavingQr] = useState(false);
+    const [qrSuccessMsg, setQrSuccessMsg] = useState("");
+    const [qrErrorMsg, setQrErrorMsg] = useState("");
+    const [isResettingQr, setIsResettingQr] = useState(false);
+    const [isCopiedAdminUpi, setIsCopiedAdminUpi] = useState(false);
+    const [qrUploadFileName, setQrUploadFileName] = useState("");
+
+    // Load QR settings from API / localStorage on mount
+    useEffect(() => {
+        const loadQrSettings = async () => {
+            const localSettings = localStorage.getItem("rotaract_custom_qr_settings");
+            if (localSettings) {
+                try {
+                    const parsed = JSON.parse(localSettings);
+                    setQrConfig(parsed);
+                    setPreviewQrImage(parsed.qrImageUrl || "/images/payment-qr.jpeg");
+                    setSelectedQrMode(parsed.qrMode === "dynamic_upi" ? "dynamic_upi" : "custom_image");
+                } catch {
+                    // ignore
+                }
+            }
+
+            try {
+                const res = await fetch("/api/admin/qr-settings");
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.settings) {
+                        setQrConfig(data.settings);
+                        setPreviewQrImage(data.settings.qrImageUrl || "/images/payment-qr.jpeg");
+                        setSelectedQrMode(data.settings.qrMode === "dynamic_upi" ? "dynamic_upi" : "custom_image");
+                        localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
+                    }
+                }
+            } catch (err) {
+                console.warn("Could not fetch remote QR settings, using local/defaults:", err);
+            }
+        };
+
+        loadQrSettings();
+    }, []);
+
+    const previewDeepLink = `upi://pay?pa=${qrConfig.upiId.trim()}&pn=${encodeURIComponent(qrConfig.payeeName.trim() || "Rotaract Club BMSCE")}&am=${qrConfig.amount}&cu=INR&tn=Rotaract+RM+Fee`;
+
+    const livePreviewImageUrl = selectedQrMode === "dynamic_upi"
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(previewDeepLink)}`
+        : previewQrImage;
+
+    const handleQrImageUpload = (file: File) => {
+        if (!file) return;
+
+        if (!file.type.startsWith("image/")) {
+            setQrErrorMsg("Please upload a valid image file (PNG, JPG, JPEG, WEBP).");
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setQrErrorMsg("QR image file size exceeds 5MB. Please upload a smaller image.");
+            return;
+        }
+
+        setQrErrorMsg("");
+        setQrUploadFileName(file.name);
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const result = reader.result as string;
+            setPreviewQrImage(result);
+            setSelectedQrMode("custom_image");
+            setQrConfig((prev) => ({
+                ...prev,
+                qrImageUrl: result,
+                qrMode: "custom_image",
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleSaveQrConfig = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingQr(true);
+        setQrErrorMsg("");
+        setQrSuccessMsg("");
+
+        try {
+            if (!qrConfig.upiId || !qrConfig.upiId.includes("@")) {
+                setQrErrorMsg("Please enter a valid UPI ID (e.g. username@bank).");
+                setIsSavingQr(false);
+                return;
+            }
+
+            const payload = {
+                qrImageUrl: selectedQrMode === "dynamic_upi"
+                    ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(previewDeepLink)}`
+                    : previewQrImage,
+                upiId: qrConfig.upiId.trim(),
+                payeeName: qrConfig.payeeName.trim(),
+                amount: Number(qrConfig.amount) || 320,
+                notes: qrConfig.notes || "",
+                updatedBy: adminUserEmail || "Authorized Admin",
+                qrMode: selectedQrMode,
+            };
+
+            const res = await fetch("/api/admin/qr-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Failed to update QR code.");
+            }
+
+            const savedSettings = data.settings;
+            setQrConfig(savedSettings);
+            setPreviewQrImage(savedSettings.qrImageUrl);
+            localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(savedSettings));
+            window.dispatchEvent(new CustomEvent("rotaract_qr_updated", { detail: savedSettings }));
+
+            setQrSuccessMsg("Payment QR code and UPI details updated successfully! Live website will now display the new QR code.");
+            setTimeout(() => setQrSuccessMsg(""), 6000);
+        } catch (err: any) {
+            console.error("Save QR error:", err);
+            setQrErrorMsg(err.message || "Failed to save QR configuration.");
+        } finally {
+            setIsSavingQr(false);
+        }
+    };
+
+    const handleResetQr = async () => {
+        if (!confirm("Are you sure you want to reset the payment QR code back to the club's default?")) {
+            return;
+        }
+
+        setIsResettingQr(true);
+        setQrErrorMsg("");
+        setQrSuccessMsg("");
+
+        try {
+            const res = await fetch("/api/admin/qr-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    isReset: true,
+                    updatedBy: adminUserEmail || "Authorized Admin",
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Failed to reset QR code.");
+            }
+
+            const defaultSettings = data.settings;
+            setQrConfig(defaultSettings);
+            setPreviewQrImage(defaultSettings.qrImageUrl);
+            setSelectedQrMode("default");
+            setQrUploadFileName("");
+            localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(defaultSettings));
+            window.dispatchEvent(new CustomEvent("rotaract_qr_updated", { detail: defaultSettings }));
+
+            setQrSuccessMsg("Payment QR code successfully reset to default club QR.");
+            setTimeout(() => setQrSuccessMsg(""), 5000);
+        } catch (err: any) {
+            console.error("Reset QR error:", err);
+            setQrErrorMsg(err.message || "Failed to reset QR code.");
+        } finally {
+            setIsResettingQr(false);
+        }
+    };
+
+    const copyAdminUpi = () => {
+        if (navigator.clipboard && qrConfig.upiId) {
+            navigator.clipboard.writeText(qrConfig.upiId);
+            setIsCopiedAdminUpi(true);
+            setTimeout(() => setIsCopiedAdminUpi(false), 2000);
+        }
+    };
+
+    const downloadCurrentQr = () => {
+        const link = document.createElement("a");
+        link.href = livePreviewImageUrl;
+        link.download = `Rotaract_BMSCE_QR_${Date.now()}.png`;
+        link.target = "_blank";
+        link.click();
     };
 
     const handleLogout = () => {
@@ -447,7 +659,7 @@ export default function AdminPortalPage() {
 
             {/* Navigation Tabs */}
             <div className="max-w-6xl mx-auto px-6 -mt-6">
-                <div className="bg-white rounded-2xl p-2 shadow-md border border-slate-200 inline-flex gap-2">
+                <div className="bg-white rounded-2xl p-2 shadow-md border border-slate-200 inline-flex flex-wrap gap-2">
                     <button
                         onClick={() => setActiveTab("members")}
                         className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${
@@ -458,6 +670,17 @@ export default function AdminPortalPage() {
                     >
                         <UserPlus className="w-4 h-4" />
                         <span>Register New Member</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("qrcode")}
+                        className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${
+                            activeTab === "qrcode"
+                                ? "bg-rotaract-cranberry text-white shadow-sm"
+                                : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                    >
+                        <QrCode className="w-4 h-4" />
+                        <span>Change Payment QR</span>
                     </button>
                     <button
                         onClick={() => setActiveTab("events")}
@@ -738,6 +961,396 @@ export default function AdminPortalPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                )}
+
+                {/* TAB: PAYMENT QR CODE & UPI SETTINGS */}
+                {activeTab === "qrcode" && (
+                    <div className="space-y-8">
+                        {/* Banner with status */}
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="space-y-1.5">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rotaract-cranberry/10 text-rotaract-cranberry text-xs font-bold">
+                                    <QrCode className="w-3.5 h-3.5" />
+                                    <span>Official Club Payment Gateway Configuration</span>
+                                </div>
+                                <h2 className="text-2xl font-bold font-heading text-rotaract-navy">
+                                    Change Club Payment QR Code & UPI
+                                </h2>
+                                <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
+                                    Update the official club QR code image, UPI ID, payee name, and membership fee displayed on the public Join Club registration portal.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                <a
+                                    href="/join-the-club"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-all border border-slate-200"
+                                >
+                                    <ExternalLink className="w-4 h-4 text-rotaract-navy" />
+                                    <span>View Live Join Page</span>
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={handleResetQr}
+                                    disabled={isResettingQr}
+                                    className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center justify-center gap-2 transition-all border border-rose-200 disabled:opacity-50 cursor-pointer"
+                                >
+                                    {isResettingQr ? (
+                                        <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+                                    ) : (
+                                        <RotateCcw className="w-4 h-4 text-rose-600" />
+                                    )}
+                                    <span>Reset to Default QR</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Notifications */}
+                        {qrSuccessMsg && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm rounded-2xl flex items-center gap-3 shadow-sm"
+                            >
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                                <span className="font-semibold">{qrSuccessMsg}</span>
+                            </motion.div>
+                        )}
+
+                        {qrErrorMsg && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm rounded-2xl flex items-center gap-3 shadow-sm"
+                            >
+                                <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                                <span className="font-semibold">{qrErrorMsg}</span>
+                            </motion.div>
+                        )}
+
+                        {/* 2-Column Studio Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            {/* LEFT COLUMN: EDIT FORM (7 cols) */}
+                            <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+                                <form onSubmit={handleSaveQrConfig} className="space-y-6">
+                                    {/* Method Selector */}
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                                            Step 1: Choose QR Code Method
+                                        </label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedQrMode("custom_image")}
+                                                className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+                                                    selectedQrMode === "custom_image"
+                                                        ? "border-rotaract-cranberry bg-rotaract-cranberry/5 ring-2 ring-rotaract-cranberry/20"
+                                                        : "border-slate-200 hover:border-slate-300 bg-white"
+                                                }`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                                    selectedQrMode === "custom_image"
+                                                        ? "bg-rotaract-cranberry text-white"
+                                                        : "bg-slate-100 text-slate-600"
+                                                }`}>
+                                                    <Upload className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-xs sm:text-sm text-slate-800">
+                                                        Upload QR Image
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                                        Upload official flyer, GPay/PhonePe poster, or bank QR.
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedQrMode("dynamic_upi")}
+                                                className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+                                                    selectedQrMode === "dynamic_upi"
+                                                        ? "border-rotaract-navy bg-rotaract-navy/5 ring-2 ring-rotaract-navy/20"
+                                                        : "border-slate-200 hover:border-slate-300 bg-white"
+                                                }`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                                    selectedQrMode === "dynamic_upi"
+                                                        ? "bg-rotaract-navy text-white"
+                                                        : "bg-slate-100 text-slate-600"
+                                                }`}>
+                                                    <RefreshCw className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-xs sm:text-sm text-slate-800">
+                                                        Auto-Generate from UPI
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                                        Crisp QR code generated automatically from your UPI ID.
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Step 2: Upload Image Dropzone (if custom_image selected) */}
+                                    {selectedQrMode === "custom_image" && (
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+                                                Step 2: Upload New QR Code Image
+                                            </label>
+                                            <label className="border-2 border-dashed border-slate-300 hover:border-rotaract-cranberry hover:bg-slate-50/60 rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 cursor-pointer bg-slate-50/30">
+                                                <div className="w-12 h-12 rounded-2xl bg-rotaract-cranberry/10 text-rotaract-cranberry flex items-center justify-center">
+                                                    <Upload className="w-6 h-6" />
+                                                </div>
+                                                <div className="text-center">
+                                                    <span className="text-xs sm:text-sm font-bold text-slate-700 block">
+                                                        Click to browse or drag & drop QR image
+                                                    </span>
+                                                    <span className="text-[11px] text-slate-400 block mt-0.5">
+                                                        Supports PNG, JPG, JPEG, WEBP (Max 5MB)
+                                                    </span>
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        if (e.target.files && e.target.files[0]) {
+                                                            handleQrImageUpload(e.target.files[0]);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                            {qrUploadFileName && (
+                                                <div className="flex items-center justify-between px-3.5 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800">
+                                                    <span className="font-medium truncate">Selected file: <strong>{qrUploadFileName}</strong></span>
+                                                    <span className="text-[10px] bg-emerald-200 px-2 py-0.5 rounded font-bold">Ready to publish</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Step 3: UPI Account & Payment Details */}
+                                    <div className="space-y-4 pt-2 border-t border-slate-100">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+                                            Step 3: UPI Account & Payment Verification Details
+                                        </label>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Club UPI ID *
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        placeholder="e.g. vaishnavisrinivasa26-1@oksbi"
+                                                        value={qrConfig.upiId}
+                                                        onChange={(e) => setQrConfig({ ...qrConfig, upiId: e.target.value })}
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                    />
+                                                    {qrConfig.upiId.includes("@") && (
+                                                        <div className="absolute right-3 top-3 text-emerald-600" title="Valid UPI format">
+                                                            <Check className="w-4 h-4" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 mt-1">
+                                                    This ID is copied by students when paying directly from their UPI apps.
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Account Holder / Payee Name *
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    placeholder="e.g. Rotaract Club BMSCE"
+                                                    value={qrConfig.payeeName}
+                                                    onChange={(e) => setQrConfig({ ...qrConfig, payeeName: e.target.value })}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                />
+                                                <p className="text-[10px] text-slate-400 mt-1">
+                                                    Official recipient name shown on UPI payment screens.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Membership Fee Amount (₹) *
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    required
+                                                    min="1"
+                                                    value={qrConfig.amount}
+                                                    onChange={(e) => setQrConfig({ ...qrConfig, amount: Number(e.target.value) || 0 })}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-rotaract-navy focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                />
+                                                <p className="text-[10px] text-slate-400 mt-1">
+                                                    Standard 4-year club membership fee amount.
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Student Guidance Notes
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Scan with any UPI app to pay fee"
+                                                    value={qrConfig.notes || ""}
+                                                    onChange={(e) => setQrConfig({ ...qrConfig, notes: e.target.value })}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                />
+                                                <p className="text-[10px] text-slate-400 mt-1">
+                                                    Helpful note shown directly underneath the payment card.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Metadata summary */}
+                                    {qrConfig.lastUpdated && (
+                                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 flex items-center justify-between">
+                                            <span className="flex items-center gap-1.5">
+                                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                                Last modified: <strong>{qrConfig.lastUpdated}</strong>
+                                            </span>
+                                            {qrConfig.updatedBy && (
+                                                <span className="text-slate-400">by {qrConfig.updatedBy}</span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Submit Action */}
+                                    <div className="pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={isSavingQr}
+                                            className="w-full py-3.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 disabled:bg-slate-300 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                                        >
+                                            {isSavingQr ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    <span>Saving & Applying New QR Code...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                    <span>Save & Publish Live QR Code</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* RIGHT COLUMN: LIVE INTERACTIVE PREVIEW (5 cols) */}
+                            <div className="lg:col-span-5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                        <Eye className="w-4 h-4 text-rotaract-navy" />
+                                        <span>Public Portal Live Preview</span>
+                                    </h3>
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        Matches /join-the-club
+                                    </span>
+                                </div>
+
+                                {/* Simulated Join-the-club Payment Card */}
+                                <div className="bg-slate-50 rounded-3xl p-6 sm:p-7 border-2 border-slate-200 shadow-md space-y-5">
+                                    <div className="text-center max-w-sm mx-auto space-y-1.5">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            <span>Official Rotaract BMSCE Payment QR</span>
+                                        </span>
+                                        <h4 className="text-xl font-extrabold font-heading text-rotaract-navy">
+                                            Scan & Pay ₹{qrConfig.amount}
+                                        </h4>
+                                        <p className="text-xs text-slate-500 font-light">
+                                            {qrConfig.notes || "Scan with Google Pay, PhonePe, Paytm, BHIM, or any UPI app."}
+                                        </p>
+                                    </div>
+
+                                    {/* QR Code Container */}
+                                    <div className="flex flex-col items-center justify-center space-y-3">
+                                        <div className="w-60 sm:w-64 max-w-full bg-white p-3 rounded-3xl shadow-sm border border-slate-200 flex items-center justify-center transition-transform hover:scale-[1.02]">
+                                            <img
+                                                src={livePreviewImageUrl}
+                                                alt="Rotaract BMSCE UPI QR Code"
+                                                className="w-full h-auto object-contain rounded-2xl max-h-64"
+                                                onError={(e) => {
+                                                    e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(previewDeepLink)}`;
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* UPI ID Pill & Copy Button */}
+                                        <div className="flex items-center justify-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-sm max-w-full">
+                                            <span className="text-[11px] text-slate-500 font-medium">Club UPI ID:</span>
+                                            <span className="text-xs font-mono font-bold text-slate-800 truncate max-w-[180px]">
+                                                {qrConfig.upiId}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={copyAdminUpi}
+                                                className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors ml-1 cursor-pointer"
+                                                title="Copy UPI ID"
+                                            >
+                                                {isCopiedAdminUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                            </button>
+                                        </div>
+
+                                        {/* Payee Name subtitle */}
+                                        <div className="text-[11px] text-slate-500 text-center">
+                                            Verified Payee: <strong>{qrConfig.payeeName}</strong>
+                                        </div>
+                                    </div>
+
+                                    {/* Action buttons on preview */}
+                                    <div className="pt-2 border-t border-slate-200/80 grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={downloadCurrentQr}
+                                            className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-200 transition-colors cursor-pointer"
+                                        >
+                                            <Download className="w-3.5 h-3.5 text-rotaract-navy" />
+                                            <span>Download QR</span>
+                                        </button>
+                                        <a
+                                            href="/join-the-club"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3 py-2 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5 text-rotaract-gold" />
+                                            <span>Test Live Page</span>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                {/* Helpful Instruction Note */}
+                                <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-1">
+                                    <p className="font-bold flex items-center gap-1.5">
+                                        <ShieldCheck className="w-4 h-4 text-amber-700" />
+                                        Admin Security & Verification
+                                    </p>
+                                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                                        Whenever you upload a new QR code image or update the UPI ID, verify by scanning this preview with your own phone&apos;s UPI application to ensure payments route into the club&apos;s correct bank account.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 

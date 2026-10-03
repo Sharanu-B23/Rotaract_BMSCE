@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import paymentSettingsRaw from "@/data/paymentSettings.json";
 import {
     Sparkles,
     Heart,
@@ -154,12 +155,63 @@ export default function JoinTheClubPage() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const clubUpiId = process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@oksbi";
-    const paymentQrImage = process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpeg";
-    const payableAmount = CLUB_MEMBERSHIP.fee; // Fixed at ₹320
+    // Dynamic Payment QR & UPI configuration managed via Admin Portal
+    const [paymentConfig, setPaymentConfig] = useState({
+        qrImageUrl: paymentSettingsRaw.qrImageUrl || process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpeg",
+        upiId: paymentSettingsRaw.upiId || process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@oksbi",
+        payeeName: paymentSettingsRaw.payeeName || "Rotaract Club BMSCE",
+        amount: Number(paymentSettingsRaw.amount) || CLUB_MEMBERSHIP.fee,
+        qrMode: ((paymentSettingsRaw as any).qrMode as "custom_image" | "dynamic_upi" | "default") || "default",
+    });
+
+    const clubUpiId = paymentConfig.upiId;
+    const paymentQrImage = paymentConfig.qrImageUrl;
+    const payableAmount = paymentConfig.amount;
+
+    // Load active settings from localStorage and sync with server API
+    useEffect(() => {
+        const updateFromStorage = () => {
+            const stored = localStorage.getItem("rotaract_custom_qr_settings");
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    setPaymentConfig((prev) => ({ ...prev, ...parsed }));
+                } catch {
+                    // ignore
+                }
+            }
+        };
+
+        updateFromStorage();
+
+        // Fetch fresh settings from server
+        fetch("/api/admin/qr-settings")
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.success && data.settings) {
+                    setPaymentConfig((prev) => ({ ...prev, ...data.settings }));
+                    localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
+                }
+            })
+            .catch(() => {});
+
+        // Listen for storage changes across tabs & instant custom dispatch
+        window.addEventListener("storage", updateFromStorage);
+        const handleCustomUpdate = (e: any) => {
+            if (e.detail) {
+                setPaymentConfig((prev) => ({ ...prev, ...e.detail }));
+            }
+        };
+        window.addEventListener("rotaract_qr_updated", handleCustomUpdate);
+
+        return () => {
+            window.removeEventListener("storage", updateFromStorage);
+            window.removeEventListener("rotaract_qr_updated", handleCustomUpdate);
+        };
+    }, []);
 
     // Deep link for UPI mobile applications
-    const upiDeepLink = `upi://pay?pa=${clubUpiId}&pn=Rotaract+Club+BMSCE&am=${payableAmount}&cu=INR&tn=Rotaract+RM+Fee+${formData.usn ? formData.usn.toUpperCase() : "BMSCE"}`;
+    const upiDeepLink = `upi://pay?pa=${clubUpiId}&pn=${encodeURIComponent(paymentConfig.payeeName || "Rotaract Club BMSCE")}&am=${payableAmount}&cu=INR&tn=Rotaract+RM+Fee+${formData.usn ? formData.usn.toUpperCase() : "BMSCE"}`;
 
     const handleInputChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -821,7 +873,11 @@ export default function JoinTheClubPage() {
                                             <div className="flex flex-col items-center justify-center space-y-4">
                                                 <div className="w-64 sm:w-72 max-w-full bg-white p-2.5 rounded-3xl shadow-md border-2 border-slate-200 flex items-center justify-center transition-transform hover:scale-[1.02]">
                                                     <img
-                                                        src={paymentQrImage}
+                                                        src={
+                                                            paymentConfig.qrMode === "dynamic_upi"
+                                                                ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiDeepLink)}`
+                                                                : paymentQrImage
+                                                        }
                                                         alt="Rotaract BMSCE UPI QR Code"
                                                         className="w-full h-auto object-contain rounded-2xl"
                                                         onError={(e) => {

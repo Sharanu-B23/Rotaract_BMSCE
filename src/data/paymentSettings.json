@@ -1,0 +1,11 @@
+{
+  "qrImageUrl": "/images/payment-qr.jpeg",
+  "upiId": "vaishnavisrinivasa26-1@oksbi",
+  "payeeName": "Rotaract Club BMSCE",
+  "amount": 320,
+  "notes": "Scan with any UPI app to pay ₹320 4-year club membership fee.",
+  "lastUpdated": "3 Oct 2026, 9:00 pm",
+  "updatedBy": "rtrsharan318@gmail.com",
+  "qrMode": "custom_image",
+  "qrImageBackup": ""
+}
