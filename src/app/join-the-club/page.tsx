@@ -19,7 +19,7 @@ import {
     ShieldCheck,
     Copy,
     Check,
-    Printer,
+    Mail,
     AlertCircle,
     UploadCloud,
     FileImage,
@@ -153,7 +153,8 @@ export default function JoinTheClubPage() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const clubUpiId = process.env.NEXT_PUBLIC_UPI_ID || "rotaractbmsce@okaxis";
+    const clubUpiId = process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@oksbi";
+    const paymentQrImage = process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpeg";
     const payableAmount = CLUB_MEMBERSHIP.fee; // Fixed at ₹320
 
     // Deep link for UPI mobile applications
@@ -415,31 +416,6 @@ export default function JoinTheClubPage() {
                         Complete your annual Club Membership (RM) registration for ₹320, scan the UPI QR code,
                         upload your payment screenshot, and join a legacy of leadership.
                     </motion.p>
-
-                    {/* Quick Highlights Bar */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="pt-4 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm text-slate-300"
-                    >
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                            <CheckCircle2 className="w-4 h-4 text-rotaract-gold" />
-                            <span>100+ Events Annually</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                            <CheckCircle2 className="w-4 h-4 text-rotaract-cranberry" />
-                            <span>7,100+ Lives Touched</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                            <span>Instant UPI QR & Verification</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                            <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-                            <span>RI District 3191 Affiliated</span>
-                        </div>
-                    </motion.div>
                 </div>
             </section>
 
@@ -818,11 +794,15 @@ export default function JoinTheClubPage() {
 
                                             {/* Dynamic QR Code */}
                                             <div className="flex flex-col items-center justify-center space-y-4">
-                                                <div className="w-56 h-56 bg-white p-3 rounded-3xl shadow-md border-2 border-slate-200 flex items-center justify-center transition-transform hover:scale-105">
+                                                <div className="w-64 sm:w-72 max-w-full bg-white p-2.5 rounded-3xl shadow-md border-2 border-slate-200 flex items-center justify-center transition-transform hover:scale-[1.02]">
                                                     <img
-                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiDeepLink)}`}
+                                                        src={paymentQrImage}
                                                         alt="Rotaract BMSCE UPI QR Code"
-                                                        className="w-full h-full object-contain rounded-2xl"
+                                                        className="w-full h-auto object-contain rounded-2xl"
+                                                        onError={(e) => {
+                                                            // Fallback to dynamic QR code generator if custom image is missing
+                                                            e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiDeepLink)}`;
+                                                        }}
                                                     />
                                                 </div>
 
@@ -1223,33 +1203,26 @@ export default function JoinTheClubPage() {
                                         </div>
                                     </div>
 
-                                    {/* Next Steps Onboarding Card */}
-                                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-left text-xs space-y-2 text-slate-600">
-                                        <p className="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
-                                            <Sparkles className="w-4 h-4 text-rotaract-gold" />
-                                            <span>Next Steps:</span>
-                                        </p>
-                                        <ul className="list-disc pl-4 space-y-1.5 font-light">
-                                            <li>Our Joint Secretary & Membership team will review your payment screenshot and add you to the official WhatsApp community (+91 {receiptData?.phone}).</li>
-                                            <li>Your record has been logged in our membership Google Sheet and Drive folder.</li>
-                                            <li>Keep your receipt ID (<strong className="font-semibold">{receiptData?.receiptId}</strong>) handy during campus induction and kit distribution.</li>
-                                        </ul>
+                                    {/* Updates & WhatsApp Onboarding Notice */}
+                                    <div className="p-5 sm:p-6 bg-slate-50 rounded-2xl border border-slate-200 text-left flex items-start gap-3.5 shadow-sm">
+                                        <div className="w-8 h-8 rounded-xl bg-rotaract-cranberry/10 text-rotaract-cranberry flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <Mail className="w-4 h-4" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs sm:text-sm font-bold text-slate-800">
+                                                Updates & Membership Induction
+                                            </p>
+                                            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                                                You will be notified about the updates soon through mail and added to a WhatsApp group within 2 weeks.
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* Action Buttons */}
                                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => window.print()}
-                                            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-rotaract-navy text-white text-xs font-bold hover:bg-rotaract-dark transition-all flex items-center justify-center gap-2 shadow-sm"
-                                        >
-                                            <Printer className="w-4 h-4" />
-                                            <span>Print / Save Receipt PDF</span>
-                                        </button>
-
                                         <Link
                                             href="/"
-                                            className="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-all text-center"
+                                            className="w-full sm:w-auto px-8 py-3 rounded-xl bg-rotaract-navy text-white text-xs font-bold hover:bg-rotaract-dark transition-all text-center shadow-sm"
                                         >
                                             Return to Home
                                         </Link>
@@ -1262,7 +1235,7 @@ export default function JoinTheClubPage() {
                                                 setReceiptData(null);
                                                 handleRemoveScreenshot();
                                             }}
-                                            className="w-full sm:w-auto px-6 py-3 rounded-xl text-slate-500 text-xs hover:text-rotaract-cranberry transition-all"
+                                            className="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 hover:text-rotaract-cranberry transition-all"
                                         >
                                             Submit Another Application
                                         </button>
