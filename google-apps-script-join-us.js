@@ -139,6 +139,7 @@ function doPost(e) {
     }
 
     sheet.appendRow(rowData);
+    SpreadsheetApp.flush(); // Guarantees all row writes are committed to disk before releasing lock
 
     var responsePayload = {
       result: "success",
