@@ -79,7 +79,7 @@ export default function HomePage() {
                         </h2>
 
                         <p className="text-slate-600 text-base md:text-lg leading-relaxed font-light">
-                            Founded over a decade ago at the historic BMS College of Engineering, the <strong className="font-semibold text-slate-800">Rotaract Club of BMSCE</strong> is a dynamic student-led organization committed to creating tangible social impact. Sponsored by the Rotary Club of Bangalore, we bring together passionate college students to solve community challenges, foster professional development, and build lifelong international friendships.
+                            Founded over a decade ago at the BMS College of Engineering, the <strong className="font-semibold text-slate-800">Rotaract Club of BMSCE</strong> is a dynamic student-led organization committed to creating tangible social impact. Partnered with the Rotary Club of Bangalore Banashankari, we bring together passionate college students to solve community challenges, foster professional development, and build lifelong international friendships.
                         </p>
 
                         <div className="pt-2 flex items-center gap-4">
@@ -132,8 +132,8 @@ export default function HomePage() {
                         </p>
                     </div>
 
-                    {/* Grid of 6 Animated Counter Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    {/* Grid of 5 Animated Counter Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                         <StatCounter
                             icon={<Calendar className="w-7 h-7" />}
                             end={100}
@@ -164,12 +164,6 @@ export default function HomePage() {
                             end={3}
                             label="Reach on social media"
                             suffix="M+"
-                        />
-                        <StatCounter
-                            icon={<Award className="w-7 h-7" />}
-                            end={15}
-                            label="NGO Partners"
-                            suffix="+"
                         />
                     </div>
 

@@ -36,7 +36,7 @@ export default function Footer() {
                         </div>
 
                         <p className="text-slate-400 text-xs md:text-sm leading-relaxed font-light max-w-sm">
-                            Official website of the Rotaract Club of BMS College of Engineering. Sponsored by the <strong>Rotary Club of Banashankari</strong> • RI District 3191.
+                            Official website of the Rotaract Club of BMSCE. Partnered with the <strong>Rotary Club of Bangalore Banashankari</strong> • RI District 3191.
                         </p>
 
                         <div className="flex items-center gap-3 pt-2">
