@@ -4,9 +4,24 @@ import path from "path";
 
 const CONFIG_PATH = path.join(process.cwd(), "src", "data", "paymentSettings.json");
 const CUSTOM_IMAGE_DIR = path.join(process.cwd(), "public", "images");
+const QR_LIBRARY_DIR = path.join(process.cwd(), "public", "images", "qr-library");
 const CUSTOM_IMAGE_FILE = path.join(CUSTOM_IMAGE_DIR, "custom-payment-qr.png");
 
-interface PaymentSettings {
+export interface QrItem {
+    id: string;
+    title: string;
+    qrImageUrl: string;
+    upiId: string;
+    payeeName: string;
+    bank?: string;
+    accountHolder?: string;
+    badge?: string;
+    isPreset?: boolean;
+    description?: string;
+    dateAdded?: string;
+}
+
+export interface PaymentSettings {
     qrImageUrl: string;
     upiId: string;
     payeeName: string;
@@ -16,18 +31,49 @@ interface PaymentSettings {
     updatedBy?: string;
     qrMode?: "custom_image" | "dynamic_upi" | "default";
     qrImageBackup?: string;
+    selectedQrId?: string;
+    availableQrs: QrItem[];
 }
+
+const DEFAULT_PRESET_QRS: QrItem[] = [
+    {
+        id: "qr-axis-bank",
+        title: "Axis Bank QR (Current Official)",
+        qrImageUrl: "/images/payment-qr.jpg",
+        upiId: "vaishnavisrinivasa26-1@okaxis",
+        payeeName: "Rotaract Club BMSCE",
+        bank: "Axis Bank",
+        accountHolder: "Rtr. Vaishnavi S",
+        badge: "Primary Official",
+        isPreset: true,
+        description: "Official Axis Bank QR code for 2026 club membership registrations",
+    },
+    {
+        id: "qr-sbi-bank",
+        title: "State Bank of India (SBI) QR",
+        qrImageUrl: "/images/payment-qr-sbi.jpeg",
+        upiId: "vaishnavisrinivasa26-1@oksbi",
+        payeeName: "Rotaract Club BMSCE",
+        bank: "State Bank of India",
+        accountHolder: "Rtr. Vaishnavi S",
+        badge: "Secondary Bank",
+        isPreset: true,
+        description: "Alternative State Bank of India QR code for club registrations",
+    },
+];
 
 function getDefaultSettings(): PaymentSettings {
     return {
-        qrImageUrl: process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpeg",
-        upiId: process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@oksbi",
+        qrImageUrl: process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpg",
+        upiId: process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@okaxis",
         payeeName: "Rotaract Club BMSCE",
         amount: 320,
         notes: "Scan with any UPI app to pay ₹320 4-year club membership fee.",
         lastUpdated: "",
         updatedBy: "Default System Settings",
-        qrMode: "default",
+        qrMode: "custom_image",
+        selectedQrId: "qr-axis-bank",
+        availableQrs: DEFAULT_PRESET_QRS,
     };
 }
 
@@ -36,9 +82,29 @@ function readStoredSettings(): PaymentSettings {
         if (fs.existsSync(CONFIG_PATH)) {
             const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
             const parsed = JSON.parse(raw);
+
+            // Ensure availableQrs contains presets
+            let storedList: QrItem[] = Array.isArray(parsed.availableQrs) ? parsed.availableQrs : [];
+            const mergedList: QrItem[] = [...DEFAULT_PRESET_QRS];
+
+            for (const item of storedList) {
+                if (!mergedList.some((p) => p.id === item.id)) {
+                    mergedList.push(item);
+                }
+            }
+
+            const activeQrUrl = parsed.qrImageUrl || DEFAULT_PRESET_QRS[0].qrImageUrl;
+            let activeId = parsed.selectedQrId;
+            if (!activeId) {
+                const match = mergedList.find((q) => q.qrImageUrl === activeQrUrl);
+                activeId = match ? match.id : DEFAULT_PRESET_QRS[0].id;
+            }
+
             return {
                 ...getDefaultSettings(),
                 ...parsed,
+                selectedQrId: activeId,
+                availableQrs: mergedList,
             };
         }
     } catch (e) {
@@ -59,7 +125,28 @@ function saveStoredSettings(settings: PaymentSettings): void {
     }
 }
 
-// GET: Fetch the current active QR code & UPI configuration
+// Helper to save base64 image data to public/images/qr-library
+function saveBase64Image(dataUri: string, filenamePrefix = "qr"): string {
+    if (!fs.existsSync(QR_LIBRARY_DIR)) {
+        fs.mkdirSync(QR_LIBRARY_DIR, { recursive: true });
+    }
+
+    const matches = dataUri.match(/^data:image\/([A-Za-z0-9-+]+);base64,(.+)$/);
+    if (!matches || matches.length < 3) {
+        throw new Error("Invalid base64 image format");
+    }
+
+    let ext = matches[1].toLowerCase();
+    if (ext === "jpeg") ext = "jpg";
+    const buffer = Buffer.from(matches[2], "base64");
+    const fileName = `${filenamePrefix}-${Date.now()}.${ext}`;
+    const filePath = path.join(QR_LIBRARY_DIR, fileName);
+    fs.writeFileSync(filePath, buffer);
+
+    return `/images/qr-library/${fileName}?v=${Date.now()}`;
+}
+
+// GET: Fetch the current active QR code, available QR gallery, and UPI configuration
 export async function GET() {
     const settings = readStoredSettings();
     return NextResponse.json(
@@ -74,11 +161,13 @@ export async function GET() {
     );
 }
 
-// POST: Update or Reset payment QR code & UPI configuration
+// POST: Manage QR gallery, Select active QR, Upload new QR, or Reset
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const {
+            action,
+            qrId,
             qrImageUrl,
             upiId,
             payeeName,
@@ -87,6 +176,11 @@ export async function POST(request: Request) {
             updatedBy,
             isReset,
             qrMode,
+            title,
+            bank,
+            description,
+            imageData,
+            selectImmediately,
         } = body;
 
         const currentSettings = readStoredSettings();
@@ -95,66 +189,188 @@ export async function POST(request: Request) {
             timeStyle: "short",
         });
 
-        // 1. Handle Reset to Defaults
+        // ACTION A: SELECT AN EXISTING QR FROM GALLERY
+        if (action === "select" && qrId) {
+            const targetQr = currentSettings.availableQrs.find((q) => q.id === qrId);
+            if (!targetQr) {
+                return NextResponse.json(
+                    { success: false, error: "Selected QR code was not found in the gallery." },
+                    { status: 404 }
+                );
+            }
+
+            const updatedSettings: PaymentSettings = {
+                ...currentSettings,
+                selectedQrId: targetQr.id,
+                qrImageUrl: targetQr.qrImageUrl,
+                upiId: targetQr.upiId,
+                payeeName: targetQr.payeeName || currentSettings.payeeName,
+                qrMode: "custom_image",
+                lastUpdated: now,
+                updatedBy: updatedBy || "Authorized Admin",
+            };
+
+            saveStoredSettings(updatedSettings);
+
+            return NextResponse.json({
+                success: true,
+                message: `"${targetQr.title}" selected successfully! Live Join Us page now displays this QR code.`,
+                settings: updatedSettings,
+            });
+        }
+
+        // ACTION B: ADD / UPLOAD A NEW QR CODE TO GALLERY
+        if (action === "add_qr") {
+            if (!title || !title.trim()) {
+                return NextResponse.json({ success: false, error: "Please provide a name/title for this QR code." }, { status: 400 });
+            }
+            if (!upiId || !upiId.includes("@")) {
+                return NextResponse.json({ success: false, error: "Please enter a valid UPI ID (e.g. username@bank)." }, { status: 400 });
+            }
+
+            let savedImageUrl = qrImageUrl || "";
+            if (imageData && imageData.startsWith("data:image/")) {
+                try {
+                    savedImageUrl = saveBase64Image(imageData, "custom-qr");
+                } catch (imgErr: any) {
+                    return NextResponse.json({ success: false, error: "Failed to process image: " + imgErr.message }, { status: 400 });
+                }
+            }
+
+            if (!savedImageUrl) {
+                return NextResponse.json({ success: false, error: "Please upload a QR code image." }, { status: 400 });
+            }
+
+            const newQrItem: QrItem = {
+                id: `qr-${Date.now()}`,
+                title: title.trim(),
+                qrImageUrl: savedImageUrl,
+                upiId: upiId.trim(),
+                payeeName: (payeeName && payeeName.trim()) || "Rotaract Club BMSCE",
+                bank: (bank && bank.trim()) || "Club Account",
+                accountHolder: (payeeName && payeeName.trim()) || "Rotaract Club BMSCE",
+                badge: "Custom Upload",
+                isPreset: false,
+                description: description || `Uploaded by ${updatedBy || "Admin"} on ${now}`,
+                dateAdded: now,
+            };
+
+            const updatedAvailable = [newQrItem, ...currentSettings.availableQrs];
+
+            const updatedSettings: PaymentSettings = {
+                ...currentSettings,
+                availableQrs: updatedAvailable,
+                ...(selectImmediately ? {
+                    selectedQrId: newQrItem.id,
+                    qrImageUrl: newQrItem.qrImageUrl,
+                    upiId: newQrItem.upiId,
+                    payeeName: newQrItem.payeeName,
+                    qrMode: "custom_image",
+                } : {}),
+                lastUpdated: now,
+                updatedBy: updatedBy || "Authorized Admin",
+            };
+
+            saveStoredSettings(updatedSettings);
+
+            return NextResponse.json({
+                success: true,
+                message: `New QR code "${newQrItem.title}" saved to library${selectImmediately ? " and activated for live site" : ""}.`,
+                settings: updatedSettings,
+            });
+        }
+
+        // ACTION C: DELETE A CUSTOM QR CODE FROM GALLERY
+        if (action === "delete_qr" && qrId) {
+            const target = currentSettings.availableQrs.find((q) => q.id === qrId);
+            if (!target) {
+                return NextResponse.json({ success: false, error: "QR code not found." }, { status: 404 });
+            }
+            if (target.isPreset) {
+                return NextResponse.json({ success: false, error: "Official system preset QR codes cannot be deleted." }, { status: 400 });
+            }
+
+            const filtered = currentSettings.availableQrs.filter((q) => q.id !== qrId);
+            let activeQrUrl = currentSettings.qrImageUrl;
+            let activeUpiId = currentSettings.upiId;
+            let activeSelectedId = currentSettings.selectedQrId;
+
+            // If the deleted QR was currently selected, fallback to the primary preset
+            if (currentSettings.selectedQrId === qrId) {
+                const fallback = DEFAULT_PRESET_QRS[0];
+                activeSelectedId = fallback.id;
+                activeQrUrl = fallback.qrImageUrl;
+                activeUpiId = fallback.upiId;
+            }
+
+            const updatedSettings: PaymentSettings = {
+                ...currentSettings,
+                availableQrs: filtered,
+                selectedQrId: activeSelectedId,
+                qrImageUrl: activeQrUrl,
+                upiId: activeUpiId,
+                lastUpdated: now,
+                updatedBy: updatedBy || "Authorized Admin",
+            };
+
+            saveStoredSettings(updatedSettings);
+
+            return NextResponse.json({
+                success: true,
+                message: `"${target.title}" removed from QR library.`,
+                settings: updatedSettings,
+            });
+        }
+
+        // ACTION D: RESET TO ORIGINAL SYSTEM DEFAULTS
         if (isReset) {
             const defaultSettings: PaymentSettings = {
-                qrImageUrl: process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpeg",
-                upiId: process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@oksbi",
-                payeeName: "Rotaract Club BMSCE",
+                qrImageUrl: DEFAULT_PRESET_QRS[0].qrImageUrl,
+                upiId: DEFAULT_PRESET_QRS[0].upiId,
+                payeeName: DEFAULT_PRESET_QRS[0].payeeName,
                 amount: 320,
                 notes: "Scan with any UPI app to pay ₹320 4-year club membership fee.",
                 lastUpdated: now,
                 updatedBy: updatedBy || "Authorized Admin",
-                qrMode: "default",
+                qrMode: "custom_image",
+                selectedQrId: DEFAULT_PRESET_QRS[0].id,
+                availableQrs: currentSettings.availableQrs.length > 0 ? currentSettings.availableQrs : DEFAULT_PRESET_QRS,
                 qrImageBackup: "",
             };
-
-            // Remove custom image file if it exists
-            try {
-                if (fs.existsSync(CUSTOM_IMAGE_FILE)) {
-                    fs.unlinkSync(CUSTOM_IMAGE_FILE);
-                }
-            } catch (err) {
-                console.warn("Could not delete custom QR image on reset:", err);
-            }
 
             saveStoredSettings(defaultSettings);
             return NextResponse.json({
                 success: true,
-                message: "QR code and UPI settings reset to original defaults.",
+                message: "QR code and UPI settings reset to original Axis Bank default.",
                 settings: defaultSettings,
             });
         }
 
-        // 2. Process Custom QR Image (Base64 file upload or URL)
+        // ACTION E: STANDARD FORM SAVE / PUBLISH
         let resolvedQrImageUrl = qrImageUrl || currentSettings.qrImageUrl;
         let qrImageBackup = currentSettings.qrImageBackup || "";
 
         if (qrImageUrl && qrImageUrl.startsWith("data:image/")) {
             try {
-                if (!fs.existsSync(CUSTOM_IMAGE_DIR)) {
-                    fs.mkdirSync(CUSTOM_IMAGE_DIR, { recursive: true });
-                }
-
-                // Extract base64 payload
-                const matches = qrImageUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-                if (matches && matches.length === 3) {
-                    const base64Data = matches[2];
-                    const buffer = Buffer.from(base64Data, "base64");
-                    fs.writeFileSync(CUSTOM_IMAGE_FILE, buffer);
-
-                    // Add cache-busting timestamp query parameter
-                    resolvedQrImageUrl = `/images/custom-payment-qr.png?v=${Date.now()}`;
-                    qrImageBackup = qrImageUrl; // Keep inline data URL for resilience
-                }
+                resolvedQrImageUrl = saveBase64Image(qrImageUrl, "custom-payment-qr");
+                qrImageBackup = qrImageUrl;
             } catch (imageErr) {
                 console.error("Failed to write custom QR image file:", imageErr);
-                // Fall back to storing inline data URL
                 resolvedQrImageUrl = qrImageUrl;
             }
         }
 
+        // Check if selectedQrId is provided or matches an item
+        let finalSelectedQrId = body.selectedQrId || currentSettings.selectedQrId;
+        const matchingItem = currentSettings.availableQrs.find(
+            (q) => q.qrImageUrl === resolvedQrImageUrl || q.id === finalSelectedQrId
+        );
+        if (matchingItem) {
+            finalSelectedQrId = matchingItem.id;
+        }
+
         const updatedSettings: PaymentSettings = {
+            ...currentSettings,
             qrImageUrl: resolvedQrImageUrl,
             upiId: (upiId && upiId.trim()) || currentSettings.upiId,
             payeeName: (payeeName && payeeName.trim()) || currentSettings.payeeName,
@@ -163,6 +379,7 @@ export async function POST(request: Request) {
             lastUpdated: now,
             updatedBy: updatedBy || "Authorized Admin",
             qrMode: qrMode || (qrImageUrl ? "custom_image" : currentSettings.qrMode || "custom_image"),
+            selectedQrId: finalSelectedQrId,
             qrImageBackup: qrImageBackup || currentSettings.qrImageBackup,
         };
 

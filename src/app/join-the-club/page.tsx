@@ -136,7 +136,7 @@ const FAQS = [
     },
     {
         question: "What happens after I submit my membership form and screenshot?",
-        answer: "Once submitted, your details are recorded in our official member database and your digital receipt is generated instantly. Our membership coordinators will add you to the official Rotaract WhatsApp group and invite you to our campus welcome orientation!"
+        answer: "Once submitted, your details are recorded in our official member database. You will be notified about the updates soon through mail and added to a WhatsApp group within 2 weeks!"
     }
 ];
 
@@ -157,11 +157,11 @@ export default function JoinTheClubPage() {
 
     // Dynamic Payment QR & UPI configuration managed via Admin Portal
     const [paymentConfig, setPaymentConfig] = useState({
-        qrImageUrl: paymentSettingsRaw.qrImageUrl || process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpeg",
-        upiId: paymentSettingsRaw.upiId || process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@oksbi",
+        qrImageUrl: paymentSettingsRaw.qrImageUrl || process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpg",
+        upiId: paymentSettingsRaw.upiId || process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@okaxis",
         payeeName: paymentSettingsRaw.payeeName || "Rotaract Club BMSCE",
         amount: Number(paymentSettingsRaw.amount) || CLUB_MEMBERSHIP.fee,
-        qrMode: ((paymentSettingsRaw as any).qrMode as "custom_image" | "dynamic_upi" | "default") || "default",
+        qrMode: ((paymentSettingsRaw as any).qrMode as "custom_image" | "dynamic_upi" | "default") || "custom_image",
     });
 
     const clubUpiId = paymentConfig.upiId;
@@ -193,7 +193,7 @@ export default function JoinTheClubPage() {
                     localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
 
         // Listen for storage changes across tabs & instant custom dispatch
         window.addEventListener("storage", updateFromStorage);
@@ -477,7 +477,7 @@ export default function JoinTheClubPage() {
                         transition={{ delay: 0.2 }}
                         className="max-w-3xl mx-auto text-slate-300 text-sm md:text-lg font-light leading-relaxed"
                     >
-                        Become an official member of the Rotaract Club of BMS College of Engineering (RI District 3191).
+                        Become an official member of the Rotaract Club of BMSCE (RI District 3191).
                     </motion.p>
                 </div>
             </section>
