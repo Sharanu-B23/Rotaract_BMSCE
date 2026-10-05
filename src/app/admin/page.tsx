@@ -152,23 +152,30 @@ export default function AdminPortalPage() {
                     return;
                 }
 
-                // Get configured allowed emails list
-                const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "";
-                const configuredAllowedEmails = allowedEmailsEnv
-                    .split(",")
-                    .map((e) => e.trim().toLowerCase())
-                    .filter(Boolean);
-                const defaultAllowedEmails = [
+                // Authoritative allowed admin emails list
+                const BUILTIN_ADMIN_EMAILS = [
                     "rtrsharan318@gmail.com",
                     "rtrsamyakr@gmail.com",
                     "rtrhimashree@gmail.com",
                     "himashreeb.cd23@bmsce.ac.in",
                     "vaishnavis.cs24@bmsce.ac.in",
                     "mohammedhassaan.ec24@bmsce.ac.in",
-                    "sushanth0087@gmail.com"
+                    "sushanth0087@gmail.com",
+                    "sushanth007@gmail.com"
                 ];
-                const allowedEmails =
-                    configuredAllowedEmails.length > 0 ? configuredAllowedEmails : defaultAllowedEmails;
+
+                const envEmails = (process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "")
+                    .split(",")
+                    .map((e) => e.trim().toLowerCase())
+                    .filter(Boolean);
+
+                // Merge and deduplicate both built-in emails and env variables
+                const allowedEmails = Array.from(
+                    new Set([
+                        ...BUILTIN_ADMIN_EMAILS.map((e) => e.trim().toLowerCase()),
+                        ...envEmails
+                    ])
+                );
 
                 // If whitelist is set, enforce matching
                 if (allowedEmails.length > 0 && !allowedEmails.includes(userEmail)) {

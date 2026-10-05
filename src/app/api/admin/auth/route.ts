@@ -17,15 +17,32 @@ export async function POST(request: Request) {
             );
         }
 
-        const allowedEmailsEnv =
+        const BUILTIN_ADMIN_EMAILS = [
+            "rtrsharan318@gmail.com",
+            "rtrsamyakr@gmail.com",
+            "rtrhimashree@gmail.com",
+            "himashreeb.cd23@bmsce.ac.in",
+            "vaishnavis.cs24@bmsce.ac.in",
+            "mohammedhassaan.ec24@bmsce.ac.in",
+            "sushanth0087@gmail.com",
+            "sushanth007@gmail.com",
+        ];
+
+        const envEmails = (
             process.env.ALLOWED_ADMIN_EMAILS ||
             process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS ||
-            "rtrsharan318@gmail.com,rtrsamyakr@gmail.com,rtrhimashree@gmail.com,vaishnavis.cs24@bmsce.ac.in,sushanth007@gmail.com,mohammedhassaan.ec24@bmsce.ac.in,himashreeb.cd23@bmsce.ac.in";
-
-        const allowedEmails = allowedEmailsEnv
+            ""
+        )
             .split(",")
             .map((e) => e.trim().toLowerCase())
             .filter(Boolean);
+
+        const allowedEmails = Array.from(
+            new Set([
+                ...BUILTIN_ADMIN_EMAILS.map((e) => e.toLowerCase()),
+                ...envEmails,
+            ])
+        );
 
         return NextResponse.json({
             success: true,
