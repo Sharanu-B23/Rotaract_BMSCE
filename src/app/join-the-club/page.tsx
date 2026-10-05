@@ -378,6 +378,7 @@ export default function JoinTheClubPage() {
             collegeEmail: formData.collegeEmail.trim(),
             email: formData.collegeEmail.trim() || formData.personalEmail.trim(),
             phone: formData.phone.trim(),
+            contactWhatsApp: formData.phone.trim(),
             payeeName: formData.payeeName.trim(),
             membershipType: CLUB_MEMBERSHIP.name,
             amount: payableAmount,
@@ -385,6 +386,7 @@ export default function JoinTheClubPage() {
             whyJoin: formData.whyJoin.trim(),
             priorExperience: formData.priorExperience.trim(),
             registeredAt: timestamp,
+            timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
             screenshotBase64: screenshotBase64,
             screenshotFileName: formattedFileName,
             source: "Website Join the Club Page"
@@ -431,6 +433,9 @@ export default function JoinTheClubPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
                 });
+                if (!apiRes.ok) {
+                    throw new Error(`API responded with status ${apiRes.status}`);
+                }
                 const resData = await apiRes.json();
                 if (resData.driveFileUrl) {
                     receiptRecord.screenshotUrl = resData.driveFileUrl;
