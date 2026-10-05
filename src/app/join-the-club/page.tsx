@@ -152,48 +152,73 @@ export default function JoinTheClubPage() {
     const [formValidationError, setFormValidationError] = useState("");
     const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [qrImageError, setQrImageError] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Dynamic Payment QR & UPI configuration managed via Admin Portal
-    const [paymentConfig, setPaymentConfig] = useState({
+    const [paymentConfig, setPaymentConfig] = useState<{
+        qrImageUrl: string;
+        upiId: string;
+        payeeName: string;
+        amount: number;
+        qrMode: "custom_image" | "dynamic_upi" | "default";
+        selectedQrId?: string;
+        lastUpdated?: string;
+    }>({
         qrImageUrl: paymentSettingsRaw.qrImageUrl || process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpg",
         upiId: paymentSettingsRaw.upiId || process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@okaxis",
         payeeName: paymentSettingsRaw.payeeName || "Rotaract Club BMSCE",
         amount: Number(paymentSettingsRaw.amount) || CLUB_MEMBERSHIP.fee,
         qrMode: ((paymentSettingsRaw as any).qrMode as "custom_image" | "dynamic_upi" | "default") || "custom_image",
+        selectedQrId: (paymentSettingsRaw as any).selectedQrId || "qr-axis-bank",
+        lastUpdated: (paymentSettingsRaw as any).lastUpdated || "",
     });
 
     const clubUpiId = paymentConfig.upiId;
     const paymentQrImage = paymentConfig.qrImageUrl;
     const payableAmount = paymentConfig.amount;
 
+    useEffect(() => {
+        setQrImageError(false);
+    }, [paymentConfig.qrImageUrl, paymentConfig.selectedQrId, paymentConfig.upiId]);
+
     // Load active settings from localStorage and sync with server API
     useEffect(() => {
         const updateFromStorage = () => {
-            const stored = localStorage.getItem("rotaract_custom_qr_settings");
-            if (stored) {
-                try {
+            try {
+                const stored = localStorage.getItem("rotaract_custom_qr_settings");
+                if (stored) {
                     const parsed = JSON.parse(stored);
                     setPaymentConfig((prev) => ({ ...prev, ...parsed }));
-                } catch {
-                    // ignore
                 }
+            } catch {
+                // ignore
             }
         };
 
         updateFromStorage();
 
-        // Fetch fresh settings from server
-        fetch("/api/admin/qr-settings")
+        // Fetch fresh settings from server (bypassing static and browser caches)
+        fetch(`/api/admin/qr-settings?t=${Date.now()}`, {
+            cache: "no-store",
+            headers: {
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                Pragma: "no-cache",
+            },
+        })
             .then((res) => res.json())
             .then((data) => {
                 if (data.success && data.settings) {
                     setPaymentConfig((prev) => ({ ...prev, ...data.settings }));
-                    localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
+                    try {
+                        localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
+                    } catch {}
                 }
             })
-            .catch(() => { });
+            .catch((err) => {
+                console.warn("Could not fetch fresh QR settings from server:", err);
+            });
 
         // Listen for storage changes across tabs & instant custom dispatch
         window.addEventListener("storage", updateFromStorage);
@@ -871,18 +896,20 @@ export default function JoinTheClubPage() {
 
                                             {/* Dynamic QR Code */}
                                             <div className="flex flex-col items-center justify-center space-y-4">
-                                                <div className="w-64 sm:w-72 max-w-full bg-white p-2.5 rounded-3xl shadow-md border-2 border-slate-200 flex items-center justify-center transition-transform hover:scale-[1.02]">
+                                                <div className="w-64 sm:w-72 max-w-full bg-white p-2.5 rounded-3xl shadow-md border-2 border-slate-200 flex items-center justify-center transition-transform hover:scale-[1.02] relative">
                                                     <img
+                                                        key={`${paymentConfig.selectedQrId || "qr"}-${paymentQrImage}-${clubUpiId}`}
                                                         src={
-                                                            paymentConfig.qrMode === "dynamic_upi"
+                                                            paymentConfig.qrMode === "dynamic_upi" || qrImageError
                                                                 ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiDeepLink)}`
-                                                                : paymentQrImage
+                                                                : (paymentQrImage.startsWith("data:") || paymentQrImage.includes("?")
+                                                                    ? paymentQrImage
+                                                                    : `${paymentQrImage}?v=${encodeURIComponent(paymentConfig.lastUpdated || paymentConfig.selectedQrId || "1")}`)
                                                         }
                                                         alt="Rotaract BMSCE UPI QR Code"
                                                         className="w-full h-auto object-contain rounded-2xl"
-                                                        onError={(e) => {
-                                                            // Fallback to dynamic QR code generator if custom image is missing
-                                                            e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiDeepLink)}`;
+                                                        onError={() => {
+                                                            setQrImageError(true);
                                                         }}
                                                     />
                                                 </div>

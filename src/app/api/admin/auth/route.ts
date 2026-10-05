@@ -20,7 +20,7 @@ export async function POST(request: Request) {
         const allowedEmailsEnv =
             process.env.ALLOWED_ADMIN_EMAILS ||
             process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS ||
-            "rtrsharan318@gmail.com,rtrsamyakr@gmail.com,rtrhimashree@gmail.com";
+            "rtrsharan318@gmail.com,rtrsamyakr@gmail.com,rtrhimashree@gmail.com,vaishnavis.cs24@bmsce.ac.in,sushanth007@gmail.com,mohammedhassaan.ec24@bmsce.ac.in,himashreeb.cd23@bmsce.ac.in";
 
         const allowedEmails = allowedEmailsEnv
             .split(",")

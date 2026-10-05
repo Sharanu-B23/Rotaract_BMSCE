@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import os from "os";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const CONFIG_PATH = path.join(process.cwd(), "src", "data", "paymentSettings.json");
+const TMP_CONFIG_PATH = path.join(os.tmpdir(), "rotaract_paymentSettings.json");
 const CUSTOM_IMAGE_DIR = path.join(process.cwd(), "public", "images");
 const QR_LIBRARY_DIR = path.join(process.cwd(), "public", "images", "qr-library");
 const CUSTOM_IMAGE_FILE = path.join(CUSTOM_IMAGE_DIR, "custom-payment-qr.png");
+
+// Memory cache across serverless invocations within the same process
+declare global {
+    var __rotaractPaymentSettings: PaymentSettings | undefined;
+}
 
 export interface QrItem {
     id: string;
@@ -38,15 +48,15 @@ export interface PaymentSettings {
 const DEFAULT_PRESET_QRS: QrItem[] = [
     {
         id: "qr-axis-bank",
-        title: "Axis Bank QR (Current Official)",
+        title: "Axis Bank QR (Official Account)",
         qrImageUrl: "/images/payment-qr.jpg",
         upiId: "vaishnavisrinivasa26-1@okaxis",
         payeeName: "Rotaract Club BMSCE",
         bank: "Axis Bank",
         accountHolder: "Rtr. Vaishnavi S",
-        badge: "Primary Official",
+        badge: "Axis Bank",
         isPreset: true,
-        description: "Official Axis Bank QR code for 2026 club membership registrations",
+        description: "Official Axis Bank QR code for club membership registrations",
     },
     {
         id: "qr-sbi-bank",
@@ -56,7 +66,7 @@ const DEFAULT_PRESET_QRS: QrItem[] = [
         payeeName: "Rotaract Club BMSCE",
         bank: "State Bank of India",
         accountHolder: "Rtr. Vaishnavi S",
-        badge: "Secondary Bank",
+        badge: "SBI Account",
         isPreset: true,
         description: "Alternative State Bank of India QR code for club registrations",
     },
@@ -77,43 +87,71 @@ function getDefaultSettings(): PaymentSettings {
     };
 }
 
+function normalizeSettings(parsed: any): PaymentSettings {
+    let storedList: QrItem[] = Array.isArray(parsed.availableQrs) ? parsed.availableQrs : [];
+    const mergedList: QrItem[] = [...DEFAULT_PRESET_QRS];
+
+    for (const item of storedList) {
+        if (!mergedList.some((p) => p.id === item.id)) {
+            mergedList.push(item);
+        }
+    }
+
+    const activeQrUrl = parsed.qrImageUrl || DEFAULT_PRESET_QRS[0].qrImageUrl;
+    let activeId = parsed.selectedQrId;
+    if (!activeId) {
+        const match = mergedList.find((q) => q.qrImageUrl === activeQrUrl);
+        activeId = match ? match.id : DEFAULT_PRESET_QRS[0].id;
+    }
+
+    return {
+        ...getDefaultSettings(),
+        ...parsed,
+        selectedQrId: activeId,
+        availableQrs: mergedList,
+    };
+}
+
 function readStoredSettings(): PaymentSettings {
+    // 1. Check in-memory global cache first
+    if (globalThis.__rotaractPaymentSettings) {
+        return globalThis.__rotaractPaymentSettings;
+    }
+
+    // 2. Check /tmp if running on serverless
+    try {
+        if (fs.existsSync(TMP_CONFIG_PATH)) {
+            const raw = fs.readFileSync(TMP_CONFIG_PATH, "utf-8");
+            const parsed = JSON.parse(raw);
+            const settings = normalizeSettings(parsed);
+            globalThis.__rotaractPaymentSettings = settings;
+            return settings;
+        }
+    } catch {}
+
+    // 3. Check persistent config in project workspace
     try {
         if (fs.existsSync(CONFIG_PATH)) {
             const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
             const parsed = JSON.parse(raw);
-
-            // Ensure availableQrs contains presets
-            let storedList: QrItem[] = Array.isArray(parsed.availableQrs) ? parsed.availableQrs : [];
-            const mergedList: QrItem[] = [...DEFAULT_PRESET_QRS];
-
-            for (const item of storedList) {
-                if (!mergedList.some((p) => p.id === item.id)) {
-                    mergedList.push(item);
-                }
-            }
-
-            const activeQrUrl = parsed.qrImageUrl || DEFAULT_PRESET_QRS[0].qrImageUrl;
-            let activeId = parsed.selectedQrId;
-            if (!activeId) {
-                const match = mergedList.find((q) => q.qrImageUrl === activeQrUrl);
-                activeId = match ? match.id : DEFAULT_PRESET_QRS[0].id;
-            }
-
-            return {
-                ...getDefaultSettings(),
-                ...parsed,
-                selectedQrId: activeId,
-                availableQrs: mergedList,
-            };
+            const settings = normalizeSettings(parsed);
+            globalThis.__rotaractPaymentSettings = settings;
+            return settings;
         }
     } catch (e) {
         console.error("Failed to read paymentSettings.json:", e);
     }
-    return getDefaultSettings();
+
+    const defaults = getDefaultSettings();
+    globalThis.__rotaractPaymentSettings = defaults;
+    return defaults;
 }
 
 function saveStoredSettings(settings: PaymentSettings): void {
+    // Always update in-memory cache
+    globalThis.__rotaractPaymentSettings = settings;
+
+    // Try saving to project workspace file
     try {
         const dir = path.dirname(CONFIG_PATH);
         if (!fs.existsSync(dir)) {
@@ -121,29 +159,40 @@ function saveStoredSettings(settings: PaymentSettings): void {
         }
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(settings, null, 2), "utf-8");
     } catch (e) {
-        console.error("Failed to save paymentSettings.json:", e);
+        // Fallback for read-only serverless platforms like Vercel
+        console.warn("Could not write to CONFIG_PATH, attempting /tmp fallback:", e);
+        try {
+            fs.writeFileSync(TMP_CONFIG_PATH, JSON.stringify(settings, null, 2), "utf-8");
+        } catch (tmpErr) {
+            console.error("Could not write to TMP_CONFIG_PATH:", tmpErr);
+        }
     }
 }
 
-// Helper to save base64 image data to public/images/qr-library
+// Helper to save base64 image data to public/images/qr-library or return data URI
 function saveBase64Image(dataUri: string, filenamePrefix = "qr"): string {
-    if (!fs.existsSync(QR_LIBRARY_DIR)) {
-        fs.mkdirSync(QR_LIBRARY_DIR, { recursive: true });
+    try {
+        if (!fs.existsSync(QR_LIBRARY_DIR)) {
+            fs.mkdirSync(QR_LIBRARY_DIR, { recursive: true });
+        }
+
+        const matches = dataUri.match(/^data:image\/([A-Za-z0-9-+]+);base64,(.+)$/);
+        if (!matches || matches.length < 3) {
+            return dataUri;
+        }
+
+        let ext = matches[1].toLowerCase();
+        if (ext === "jpeg") ext = "jpg";
+        const buffer = Buffer.from(matches[2], "base64");
+        const fileName = `${filenamePrefix}-${Date.now()}.${ext}`;
+        const filePath = path.join(QR_LIBRARY_DIR, fileName);
+        fs.writeFileSync(filePath, buffer);
+
+        return `/images/qr-library/${fileName}?v=${Date.now()}`;
+    } catch (e) {
+        // If filesystem is read-only (e.g. Vercel), preserve the dataUri directly
+        return dataUri;
     }
-
-    const matches = dataUri.match(/^data:image\/([A-Za-z0-9-+]+);base64,(.+)$/);
-    if (!matches || matches.length < 3) {
-        throw new Error("Invalid base64 image format");
-    }
-
-    let ext = matches[1].toLowerCase();
-    if (ext === "jpeg") ext = "jpg";
-    const buffer = Buffer.from(matches[2], "base64");
-    const fileName = `${filenamePrefix}-${Date.now()}.${ext}`;
-    const filePath = path.join(QR_LIBRARY_DIR, fileName);
-    fs.writeFileSync(filePath, buffer);
-
-    return `/images/qr-library/${fileName}?v=${Date.now()}`;
 }
 
 // GET: Fetch the current active QR code, available QR gallery, and UPI configuration
@@ -153,9 +202,10 @@ export async function GET() {
         { success: true, settings },
         {
             headers: {
-                "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+                "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
                 Pragma: "no-cache",
                 Expires: "0",
+                "Surrogate-Control": "no-store",
             },
         }
     );
