@@ -81,9 +81,17 @@ export default function AdminPortalPage() {
         phone: "",
         bloodGroup: "Prefer not to say",
         membershipType: "RI - Rotary International membership",
+        amount: "800",
         payeeName: "",
         timestamp: "",
     });
+    const [lastRegisteredMember, setLastRegisteredMember] = useState<{
+        name: string;
+        usn: string;
+        amount: number;
+        membershipType: string;
+        receiptId: string;
+    } | null>(null);
     const [registrationDesk, setRegistrationDesk] = useState<string>("Desk 1 (Sharan)");
     const [isSubmittingMember, setIsSubmittingMember] = useState(false);
     const [memberSubmittedSuccess, setMemberSubmittedSuccess] = useState(false);
@@ -98,6 +106,12 @@ export default function AdminPortalPage() {
             setRegistrationDesk("Desk 2 (Samyak)");
         } else if (adminUserEmail.toLowerCase().includes("hima")) {
             setRegistrationDesk("Desk 3 (Himashree)");
+        } else if (adminUserEmail.toLowerCase().includes("neerva")) {
+            setRegistrationDesk("Desk 4 (Neerva)");
+        } else if (adminUserEmail.toLowerCase().includes("geethika")) {
+            setRegistrationDesk("Desk 5 (Geethika)");
+        } else if (adminUserEmail.toLowerCase().includes("aman")) {
+            setRegistrationDesk("Desk 6 (Aman)");
         } else {
             setRegistrationDesk("Desk 1 (Sharan)");
         }
@@ -161,7 +175,10 @@ export default function AdminPortalPage() {
                     "vaishnavis.cs24@bmsce.ac.in",
                     "mohammedhassaan.ec24@bmsce.ac.in",
                     "sushanth0087@gmail.com",
-                    "sushanth007@gmail.com"
+                    "sushanth007@gmail.com",
+                    "neervanegi.cs25@bmsce.ac.in",
+                    "geethika.cs24@bmsce.ac.in",
+                    "aman.cs25@bmsce.ac.in"
                 ];
 
                 const envEmails = (process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "")
@@ -665,6 +682,12 @@ export default function AdminPortalPage() {
                 timeStyle: "short",
             });
 
+        const defaultStdAmount = memberForm.membershipType.startsWith("RI") ? 800 : 320;
+        const parsedAmount =
+            memberForm.amount !== "" && !isNaN(Number(memberForm.amount))
+                ? Number(memberForm.amount)
+                : defaultStdAmount;
+
         try {
             const payload = {
                 type: "NEW_MEMBER_REGISTRATION",
@@ -680,7 +703,7 @@ export default function AdminPortalPage() {
                 bloodGroup: memberForm.bloodGroup,
                 membershipType: memberForm.membershipType,
                 payeeName: memberForm.payeeName,
-                amount: memberForm.membershipType.startsWith("RI") ? 800 : 320,
+                amount: parsedAmount,
                 timestamp: currentTimestamp,
                 registeredAt: currentTimestamp,
                 addedBy: adminUserEmail || registrationDesk,
@@ -700,6 +723,13 @@ export default function AdminPortalPage() {
 
             setIsSubmittingMember(false);
             setMemberSubmittedSuccess(true);
+            setLastRegisteredMember({
+                name: memberForm.fullName,
+                usn: memberForm.usn,
+                amount: parsedAmount,
+                membershipType: memberForm.membershipType,
+                receiptId: payload.receiptId,
+            });
             setMemberForm({
                 fullName: "",
                 usn: "",
@@ -709,6 +739,7 @@ export default function AdminPortalPage() {
                 phone: "",
                 bloodGroup: "Prefer not to say",
                 membershipType: "RI - Rotary International membership",
+                amount: "600",
                 payeeName: "",
                 timestamp: new Date().toLocaleString("en-IN", {
                     dateStyle: "medium",
@@ -881,8 +912,8 @@ export default function AdminPortalPage() {
                     <button
                         onClick={() => setActiveTab("members")}
                         className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${activeTab === "members"
-                                ? "bg-rotaract-navy text-white shadow-sm"
-                                : "text-slate-600 hover:bg-slate-100"
+                            ? "bg-rotaract-navy text-white shadow-sm"
+                            : "text-slate-600 hover:bg-slate-100"
                             }`}
                     >
                         <UserPlus className="w-4 h-4" />
@@ -891,8 +922,8 @@ export default function AdminPortalPage() {
                     <button
                         onClick={() => setActiveTab("qrcode")}
                         className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${activeTab === "qrcode"
-                                ? "bg-rotaract-cranberry text-white shadow-sm"
-                                : "text-slate-600 hover:bg-slate-100"
+                            ? "bg-rotaract-cranberry text-white shadow-sm"
+                            : "text-slate-600 hover:bg-slate-100"
                             }`}
                     >
                         <QrCode className="w-4 h-4" />
@@ -901,8 +932,8 @@ export default function AdminPortalPage() {
                     <button
                         onClick={() => setActiveTab("events")}
                         className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${activeTab === "events"
-                                ? "bg-rotaract-navy text-white shadow-sm"
-                                : "text-slate-600 hover:bg-slate-100"
+                            ? "bg-rotaract-navy text-white shadow-sm"
+                            : "text-slate-600 hover:bg-slate-100"
                             }`}
                     >
                         <Calendar className="w-4 h-4" />
@@ -942,7 +973,10 @@ export default function AdminPortalPage() {
                                         <option value="Desk 1 (Sharan)">Desk 1 (Sharan)</option>
                                         <option value="Desk 2 (Samyak)">Desk 2 (Samyak)</option>
                                         <option value="Desk 3 (Himashree)">Desk 3 (Himashree)</option>
-                                        <option value="Desk 4 (Support Desk)">Desk 4 (Support Desk)</option>
+                                        <option value="Desk 4 (Neerva)">Desk 4 (Neerva)</option>
+                                        <option value="Desk 5 (Geethika)">Desk 5 (Geethika)</option>
+                                        <option value="Desk 6 (Aman)">Desk 6 (Aman)</option>
+                                        <option value="Support Desk">Support Desk</option>
                                     </select>
                                 </div>
                             </div>
@@ -951,10 +985,16 @@ export default function AdminPortalPage() {
                         {memberSubmittedSuccess && (
                             <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-3">
                                 <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
-                                <div>
-                                    <p className="font-bold">Member Successfully Registered!</p>
-                                    <p className="text-[11px] text-emerald-700">
-                                        Member details and payment records have been securely added.
+                                <div className="flex-1">
+                                    <p className="font-bold text-sm">Member Successfully Registered!</p>
+                                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                                        {lastRegisteredMember ? (
+                                            <>
+                                                Recorded <strong>{lastRegisteredMember.name}</strong> ({lastRegisteredMember.usn}) with payment amount <strong className="text-emerald-900 bg-emerald-100 px-1.5 py-0.5 rounded font-bold">₹{lastRegisteredMember.amount}</strong> ({lastRegisteredMember.membershipType.startsWith("RI") ? "RI" : "RM"}). Receipt ID: <span className="font-mono font-semibold">{lastRegisteredMember.receiptId}</span>.
+                                            </>
+                                        ) : (
+                                            "Member details and payment records have been securely added."
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -1090,36 +1130,121 @@ export default function AdminPortalPage() {
 
                             {/* Membership & Payment Details */}
                             <div className="space-y-4 pt-2 border-t border-slate-100">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                                    Membership Type & Payment Verification
-                                </h3>
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                        Membership Type & Payment Verification
+                                    </h3>
+                                    <span className="text-[11px] text-slate-400 font-medium">
+                                        Supports custom fees & student discounts
+                                    </span>
+                                </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
                                             Type of Membership *
                                         </label>
                                         <select
                                             value={memberForm.membershipType}
-                                            onChange={(e) => setMemberForm({ ...memberForm, membershipType: e.target.value })}
+                                            onChange={(e) => {
+                                                const newType = e.target.value;
+                                                const prevDefault = memberForm.membershipType.startsWith("RI") ? "800" : "320";
+                                                const nextDefault = newType.startsWith("RI") ? "800" : "320";
+                                                const shouldUpdate = !memberForm.amount || memberForm.amount === prevDefault;
+                                                setMemberForm({
+                                                    ...memberForm,
+                                                    membershipType: newType,
+                                                    amount: shouldUpdate ? nextDefault : memberForm.amount,
+                                                });
+                                            }}
                                             className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white font-medium"
                                         >
-                                            <option value="RI - Rotary International membership">RI - Rotary International membership</option>
-                                            <option value="RM - Rotaract Club membership">RM - Rotaract Club membership</option>
+                                            <option value="RI - Rotary International membership">RI - Rotary International (Std ₹800)</option>
+                                            <option value="RM - Rotaract Club membership">RM - Rotaract Club (Std ₹320)</option>
                                         </select>
                                     </div>
 
                                     <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="block text-xs font-semibold text-slate-700">
+                                                Amount Paid (₹) *
+                                            </label>
+                                            {memberForm.amount !== "" && !isNaN(Number(memberForm.amount)) && (
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${Number(memberForm.amount) < (memberForm.membershipType.startsWith("RI") ? 800 : 320)
+                                                    ? "bg-amber-100 text-amber-700"
+                                                    : "bg-emerald-100 text-emerald-700"
+                                                    }`}>
+                                                    {Number(memberForm.amount) < (memberForm.membershipType.startsWith("RI") ? 800 : 320)
+                                                        ? `Discount: ₹${(memberForm.membershipType.startsWith("RI") ? 800 : 320) - Number(memberForm.amount)} off`
+                                                        : "Standard Fee"}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="relative">
+                                            <span className="absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm select-none">
+                                                ₹
+                                            </span>
+                                            <input
+                                                type="number"
+                                                required
+                                                min="0"
+                                                step="1"
+                                                placeholder="e.g. 800, 320, 250"
+                                                value={memberForm.amount}
+                                                onChange={(e) => setMemberForm({ ...memberForm, amount: e.target.value })}
+                                                className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                            <button
+                                                type="button"
+                                                onClick={() => setMemberForm({ ...memberForm, amount: memberForm.membershipType.startsWith("RI") ? "800" : "320" })}
+                                                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium transition cursor-pointer"
+                                                title="Reset to standard full fee"
+                                            >
+                                                Std ₹{memberForm.membershipType.startsWith("RI") ? "800" : "320"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMemberForm({ ...memberForm, amount: "250" })}
+                                                className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium transition cursor-pointer"
+                                                title="Quick discount ₹250"
+                                            >
+                                                ₹250
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMemberForm({ ...memberForm, amount: "300" })}
+                                                className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium transition cursor-pointer"
+                                                title="Quick discount ₹300"
+                                            >
+                                                ₹300
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMemberForm({ ...memberForm, amount: "0" })}
+                                                className="text-[10px] px-1.5 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium transition cursor-pointer"
+                                                title="Complimentary / waiver"
+                                            >
+                                                ₹0 (Free)
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            Payee Name <span className="font-normal text-slate-400">(If paid online)</span>
+                                            Payee Name <span className="font-normal text-slate-400">(If online)</span>
                                         </label>
                                         <input
                                             type="text"
-                                            placeholder="Account holder name on UPI (if paid online)"
+                                            placeholder="UPI account holder name"
                                             value={memberForm.payeeName}
                                             onChange={(e) => setMemberForm({ ...memberForm, payeeName: e.target.value })}
                                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
                                         />
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            Leave empty if paid in cash
+                                        </p>
                                     </div>
 
                                     <div>
@@ -1152,6 +1277,9 @@ export default function AdminPortalPage() {
                                             onChange={(e) => setMemberForm({ ...memberForm, timestamp: e.target.value })}
                                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-slate-50 text-slate-700"
                                         />
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            Auto-records current time if blank
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -1283,15 +1411,15 @@ export default function AdminPortalPage() {
                                                 }
                                             }}
                                             className={`rounded-2xl p-5 border-2 transition-all flex flex-col justify-between relative group cursor-pointer ${isActive
-                                                    ? "border-emerald-500 bg-emerald-50/40 shadow-md ring-4 ring-emerald-500/20"
-                                                    : "border-slate-200 bg-slate-50/60 hover:bg-white hover:border-rotaract-navy/60 hover:shadow-md"
+                                                ? "border-emerald-500 bg-emerald-50/40 shadow-md ring-4 ring-emerald-500/20"
+                                                : "border-slate-200 bg-slate-50/60 hover:bg-white hover:border-rotaract-navy/60 hover:shadow-md"
                                                 }`}
                                         >
                                             {/* Card Header & Status Badge */}
                                             <div className="flex items-center justify-between gap-2 mb-3">
                                                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${isActive
-                                                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                                                        : "bg-slate-100 text-slate-600 border-slate-200"
+                                                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                                    : "bg-slate-100 text-slate-600 border-slate-200"
                                                     }`}>
                                                     {item.badge || item.bank || "Available Option"}
                                                 </span>
@@ -1422,13 +1550,13 @@ export default function AdminPortalPage() {
                                                 type="button"
                                                 onClick={() => setSelectedQrMode("custom_image")}
                                                 className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${selectedQrMode === "custom_image"
-                                                        ? "border-rotaract-cranberry bg-rotaract-cranberry/5 ring-2 ring-rotaract-cranberry/20"
-                                                        : "border-slate-200 hover:border-slate-300 bg-white"
+                                                    ? "border-rotaract-cranberry bg-rotaract-cranberry/5 ring-2 ring-rotaract-cranberry/20"
+                                                    : "border-slate-200 hover:border-slate-300 bg-white"
                                                     }`}
                                             >
                                                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedQrMode === "custom_image"
-                                                        ? "bg-rotaract-cranberry text-white"
-                                                        : "bg-slate-100 text-slate-600"
+                                                    ? "bg-rotaract-cranberry text-white"
+                                                    : "bg-slate-100 text-slate-600"
                                                     }`}>
                                                     <ImageIcon className="w-4 h-4" />
                                                 </div>
@@ -1446,13 +1574,13 @@ export default function AdminPortalPage() {
                                                 type="button"
                                                 onClick={() => setSelectedQrMode("dynamic_upi")}
                                                 className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${selectedQrMode === "dynamic_upi"
-                                                        ? "border-rotaract-navy bg-rotaract-navy/5 ring-2 ring-rotaract-navy/20"
-                                                        : "border-slate-200 hover:border-slate-300 bg-white"
+                                                    ? "border-rotaract-navy bg-rotaract-navy/5 ring-2 ring-rotaract-navy/20"
+                                                    : "border-slate-200 hover:border-slate-300 bg-white"
                                                     }`}
                                             >
                                                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedQrMode === "dynamic_upi"
-                                                        ? "bg-rotaract-navy text-white"
-                                                        : "bg-slate-100 text-slate-600"
+                                                    ? "bg-rotaract-navy text-white"
+                                                    : "bg-slate-100 text-slate-600"
                                                     }`}>
                                                     <RefreshCw className="w-4 h-4" />
                                                 </div>

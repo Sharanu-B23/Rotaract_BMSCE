@@ -25,6 +25,9 @@ export async function POST(request: Request) {
             "vaishnavis.cs24@bmsce.ac.in",
             "mohammedhassaan.ec24@bmsce.ac.in",
             "sushanth0087@gmail.com",
+            "aman.cs25@bmsce.ac.in",
+            "neervanegi.cs25@bmsce.ac.in",
+            "geethika.cs24@bmsce.ac.in",
             "sushanth007@gmail.com",
         ];
 

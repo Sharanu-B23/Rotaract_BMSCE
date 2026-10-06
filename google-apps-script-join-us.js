@@ -155,7 +155,10 @@ var FIELD_DEFINITIONS = [
     header: "Membership Fee (₹)",
     aliases: ["membership fee", "fee", "fees", "amount", "paid", "amount paid", "cost", "inr", "price"],
     getValue: function(d) {
-      return (d.amount || "320").toString().trim();
+      if (d.amount !== undefined && d.amount !== null && d.amount !== "") {
+        return d.amount.toString().trim();
+      }
+      return (d.membershipType && d.membershipType.indexOf("RI") !== -1 ? "800" : "320");
     }
   },
   {
