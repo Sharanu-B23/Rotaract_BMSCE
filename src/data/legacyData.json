@@ -159,8 +159,22 @@
     },
     {
         "year": "2016–17",
+        "president": "PP. Rtr. Bhanushree Natekar",
+        "presidentImage": "/images/legacy/president_1617.jpeg",
+        "secretary": "",
+        "teamPhoto": "/images/legacy/2016-team.jpg",
+        "coreTeam": [
+            {
+                "name": "PP. Rtr. Bhanushree Natekar",
+                "role": "President"
+            }
+        ],
+        "highlights": []
+    },
+    {
+        "year": "2014–15",
         "president": "PP. Rtr. Ajay Gopal",
-        "presidentImage": "/images/legacy/bhgdgh.png",
+        "presidentImage": "/images/legacy/president_1415.png",
         "secretary": "Tanya Agarwal",
         "teamPhoto": "/images/legacy/2016-team.jpg",
         "coreTeam": [

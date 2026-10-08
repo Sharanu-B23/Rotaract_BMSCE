@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import paymentSettingsRaw from "@/data/paymentSettings.json";
 import {
     Sparkles,
     Heart,
@@ -19,7 +20,7 @@ import {
     ShieldCheck,
     Copy,
     Check,
-    Printer,
+    Mail,
     AlertCircle,
     UploadCloud,
     FileImage,
@@ -98,9 +99,10 @@ const BLOOD_GROUPS = [
 const CLUB_MEMBERSHIP = {
     code: "RM",
     name: "Club Membership (RM)",
-    shortTag: "Official BMSCE Club Member",
+    shortTag: "official rotaract BMSCE membership (RM)",
     fee: 320,
-    description: "Official annual Rotaract membership for BMSCE students. Grants complete access to campus drives, committees, leadership positions, verified volunteer hours, and flagship events.",
+    duration: "4 Years",
+    description: "Official 4-year Rotaract membership for BMSCE students. Grants complete access to campus drives, committees, leadership positions, verified volunteer hours, and flagship events throughout your 4-year tenure.",
     perks: [
         "Full access to all BMSCE campus projects, workshops, speaker sessions & fests",
         "Official club participation certificates & verified volunteering credit hours",
@@ -113,12 +115,12 @@ const CLUB_MEMBERSHIP = {
 
 const FAQS = [
     {
-        question: "What does the Club Membership (RM - ₹320) include?",
-        answer: "RM (Rotaract Club Member - ₹320) grants full official membership within BMSCE, including access to all campus initiatives, leadership development workshops, eligibility to chair event committees, official volunteering certificates with verified hours, and mentorship from senior club leaders and alumni."
+        question: "What does the Club Membership (RM - ₹320 for 4 years) include?",
+        answer: "Club Membership (RM - ₹320 for 4 years) grants full official Rotaract BMSCE membership across your 4-year tenure, including access to all campus initiatives, leadership development workshops, eligibility to chair event committees, official volunteering certificates with verified hours, and mentorship from senior club leaders and alumni."
     },
     {
         question: "How do I pay the ₹320 membership fee and verify my registration?",
-        answer: "Simply scan the UPI QR code on this page with any UPI app (Google Pay, PhonePe, Paytm, BHIM) to pay ₹320. Take a screenshot of the completed payment receipt and upload it directly in the form below the QR code. Your screenshot is saved in the club's Google Drive under your name for fast administrative verification."
+        answer: "Simply scan the UPI QR code on this page with any UPI app (Google Pay, PhonePe, Paytm, BHIM) to pay the ₹320 membership fee (covers 4 years). Take a screenshot of the completed payment receipt and upload it directly in the form below the QR code. Your screenshot is saved in the club's Google Drive under your name for fast administrative verification."
     },
     {
         question: "Where will my payment screenshot be saved?",
@@ -134,7 +136,7 @@ const FAQS = [
     },
     {
         question: "What happens after I submit my membership form and screenshot?",
-        answer: "Once submitted, your details are recorded in our official member database and your digital receipt is generated instantly. Our membership coordinators will add you to the official Rotaract WhatsApp group and invite you to our campus welcome orientation!"
+        answer: "Once submitted, your details are recorded in our official member database. You will be notified about the updates soon through mail and added to a WhatsApp group within 2 weeks!"
     }
 ];
 
@@ -150,20 +152,103 @@ export default function JoinTheClubPage() {
     const [formValidationError, setFormValidationError] = useState("");
     const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [qrImageError, setQrImageError] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const clubUpiId = process.env.NEXT_PUBLIC_UPI_ID || "rotaractbmsce@okaxis";
-    const payableAmount = CLUB_MEMBERSHIP.fee; // Fixed at ₹320
+    // Dynamic Payment QR & UPI configuration managed via Admin Portal
+    const [paymentConfig, setPaymentConfig] = useState<{
+        qrImageUrl: string;
+        upiId: string;
+        payeeName: string;
+        amount: number;
+        qrMode: "custom_image" | "dynamic_upi" | "default";
+        selectedQrId?: string;
+        lastUpdated?: string;
+    }>({
+        qrImageUrl: paymentSettingsRaw.qrImageUrl || process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpg",
+        upiId: paymentSettingsRaw.upiId || process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@okaxis",
+        payeeName: paymentSettingsRaw.payeeName || "Rotaract Club BMSCE",
+        amount: Number(paymentSettingsRaw.amount) || CLUB_MEMBERSHIP.fee,
+        qrMode: ((paymentSettingsRaw as any).qrMode as "custom_image" | "dynamic_upi" | "default") || "custom_image",
+        selectedQrId: (paymentSettingsRaw as any).selectedQrId || "qr-axis-bank",
+        lastUpdated: (paymentSettingsRaw as any).lastUpdated || "",
+    });
+
+    const clubUpiId = paymentConfig.upiId;
+    const paymentQrImage = paymentConfig.qrImageUrl;
+    const payableAmount = paymentConfig.amount;
+
+    useEffect(() => {
+        setQrImageError(false);
+    }, [paymentConfig.qrImageUrl, paymentConfig.selectedQrId, paymentConfig.upiId]);
+
+    // Load active settings from localStorage and sync with server API
+    useEffect(() => {
+        const updateFromStorage = () => {
+            try {
+                const stored = localStorage.getItem("rotaract_custom_qr_settings");
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    setPaymentConfig((prev) => ({ ...prev, ...parsed }));
+                }
+            } catch {
+                // ignore
+            }
+        };
+
+        updateFromStorage();
+
+        // Fetch fresh settings from server (bypassing static and browser caches)
+        fetch(`/api/admin/qr-settings?t=${Date.now()}`, {
+            cache: "no-store",
+            headers: {
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                Pragma: "no-cache",
+            },
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.success && data.settings) {
+                    setPaymentConfig((prev) => ({ ...prev, ...data.settings }));
+                    try {
+                        localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
+                    } catch {}
+                }
+            })
+            .catch((err) => {
+                console.warn("Could not fetch fresh QR settings from server:", err);
+            });
+
+        // Listen for storage changes across tabs & instant custom dispatch
+        window.addEventListener("storage", updateFromStorage);
+        const handleCustomUpdate = (e: any) => {
+            if (e.detail) {
+                setPaymentConfig((prev) => ({ ...prev, ...e.detail }));
+            }
+        };
+        window.addEventListener("rotaract_qr_updated", handleCustomUpdate);
+
+        return () => {
+            window.removeEventListener("storage", updateFromStorage);
+            window.removeEventListener("rotaract_qr_updated", handleCustomUpdate);
+        };
+    }, []);
 
     // Deep link for UPI mobile applications
-    const upiDeepLink = `upi://pay?pa=${clubUpiId}&pn=Rotaract+Club+BMSCE&am=${payableAmount}&cu=INR&tn=Rotaract+RM+Fee+${formData.usn ? formData.usn.toUpperCase() : "BMSCE"}`;
+    const upiDeepLink = `upi://pay?pa=${clubUpiId}&pn=${encodeURIComponent(paymentConfig.payeeName || "Rotaract Club BMSCE")}&am=${payableAmount}&cu=INR&tn=Rotaract+RM+Fee+${formData.usn ? formData.usn.toUpperCase() : "BMSCE"}`;
 
     const handleInputChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        if (name === "phone") {
+            // Only allow numbers and cap at 10 digits
+            const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+            setFormData((prev) => ({ ...prev, [name]: digitsOnly }));
+        } else {
+            setFormData((prev) => ({ ...prev, [name]: value }));
+        }
         if (formValidationError) setFormValidationError("");
     };
 
@@ -253,8 +338,11 @@ export default function JoinTheClubPage() {
             setFormValidationError("Please enter your College Email Address (e.g. name@bmsce.ac.in).");
             return;
         }
-        if (!formData.phone.trim() || formData.phone.length < 10) {
+        const cleanPhone = formData.phone.trim().replace(/\D/g, "");
+        if (!cleanPhone || cleanPhone.length !== 10) {
             setFormValidationError("Please enter a valid 10-digit WhatsApp / Phone Number.");
+            const phoneEl = document.getElementById("phone-input");
+            if (phoneEl) phoneEl.scrollIntoView({ behavior: "smooth" });
             return;
         }
         if (!screenshotBase64) {
@@ -264,9 +352,12 @@ export default function JoinTheClubPage() {
             return;
         }
         if (!formData.payeeName.trim()) {
-            setFormValidationError("Please enter the Payee Name (account holder's name shown on the UPI payment screenshot).");
+            setFormValidationError("Please enter the Payee Name (mandatory account holder's name shown on the UPI payment screenshot).");
             const payeeEl = document.getElementById("payee-name-input");
-            if (payeeEl) payeeEl.scrollIntoView({ behavior: "smooth" });
+            if (payeeEl) {
+                payeeEl.focus();
+                payeeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
             return;
         }
 
@@ -287,6 +378,7 @@ export default function JoinTheClubPage() {
             collegeEmail: formData.collegeEmail.trim(),
             email: formData.collegeEmail.trim() || formData.personalEmail.trim(),
             phone: formData.phone.trim(),
+            contactWhatsApp: formData.phone.trim(),
             payeeName: formData.payeeName.trim(),
             membershipType: CLUB_MEMBERSHIP.name,
             amount: payableAmount,
@@ -294,6 +386,7 @@ export default function JoinTheClubPage() {
             whyJoin: formData.whyJoin.trim(),
             priorExperience: formData.priorExperience.trim(),
             registeredAt: timestamp,
+            timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
             screenshotBase64: screenshotBase64,
             screenshotFileName: formattedFileName,
             source: "Website Join the Club Page"
@@ -340,6 +433,9 @@ export default function JoinTheClubPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
                 });
+                if (!apiRes.ok) {
+                    throw new Error(`API responded with status ${apiRes.status}`);
+                }
                 const resData = await apiRes.json();
                 if (resData.driveFileUrl) {
                     receiptRecord.screenshotUrl = resData.driveFileUrl;
@@ -349,9 +445,7 @@ export default function JoinTheClubPage() {
 
                 // Direct Google Sheet Webhook Fallback if /api/join is unavailable
                 const directScriptUrl =
-                    process.env.NEXT_PUBLIC_JOIN_SHEET_URL ||
-                    process.env.NEXT_PUBLIC_MEMBER_SHEET_URL ||
-                    process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
+                    process.env.NEXT_PUBLIC_JOIN_SHEET_URL;
 
                 if (directScriptUrl) {
                     await fetch(directScriptUrl, {
@@ -413,35 +507,8 @@ export default function JoinTheClubPage() {
                         transition={{ delay: 0.2 }}
                         className="max-w-3xl mx-auto text-slate-300 text-sm md:text-lg font-light leading-relaxed"
                     >
-                        Become an official member of the Rotaract Club of BMS College of Engineering (RI District 3191).
-                        Complete your annual Club Membership (RM) registration for ₹320, scan the UPI QR code,
-                        upload your payment screenshot, and join a legacy of leadership.
+                        Become an official member of the Rotaract Club of BMSCE (RI District 3191).
                     </motion.p>
-
-                    {/* Quick Highlights Bar */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="pt-4 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm text-slate-300"
-                    >
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                            <CheckCircle2 className="w-4 h-4 text-rotaract-gold" />
-                            <span>100+ Events Annually</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                            <CheckCircle2 className="w-4 h-4 text-rotaract-cranberry" />
-                            <span>7,100+ Lives Touched</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                            <span>Instant UPI QR & Verification</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                            <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-                            <span>RI District 3191 Affiliated</span>
-                        </div>
-                    </motion.div>
                 </div>
             </section>
 
@@ -546,7 +613,7 @@ export default function JoinTheClubPage() {
                                 Scan & Pay ₹320
                             </h4>
                             <p className="text-xs text-slate-500 font-light mt-1">
-                                Scan the official club UPI QR code with any UPI app to pay the ₹320 annual membership fee.
+                                Scan the official club UPI QR code with any UPI app to pay the ₹320 club membership fee for 4 years.
                             </p>
                         </div>
 
@@ -586,7 +653,7 @@ export default function JoinTheClubPage() {
                                 Rotaract Club of BMSCE Membership 2026–27
                             </h2>
                             <p className="text-slate-300 text-xs md:text-sm font-light mt-2 max-w-2xl">
-                                Complete your registration below. Club Membership (RM) carries an annual fee of ₹320. Both personal and college email IDs are required for official club roster registration.
+                                Complete your registration below. Club membership is ₹320 for 4 years (official rotaract BMSCE membership). Both personal and college email IDs are required for official club roster registration.
                             </p>
                         </div>
 
@@ -605,11 +672,11 @@ export default function JoinTheClubPage() {
                                     {/* Simple Membership Fee Notice */}
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-slate-700">Annual Club Membership:</span>
+                                            <span className="font-semibold text-slate-700">Club membership :</span>
                                             <span className="font-extrabold text-rotaract-cranberry text-sm">₹{payableAmount}</span>
-                                            <span className="text-slate-400">/ year</span>
+                                            <span className="text-slate-500 font-medium">for 4 years</span>
                                         </div>
-                                        <span className="text-slate-500 text-[11px]">Official BMSCE Club Member (RM)</span>
+                                        <span className="text-slate-500 text-[11px] font-medium">official rotaract BMSCE membership (RM)</span>
                                     </div>
 
                                     {/* SECTION 1: PERSONAL & COLLEGE INFORMATION */}
@@ -693,18 +760,32 @@ export default function JoinTheClubPage() {
 
                                             {/* Phone / WhatsApp */}
                                             <div>
-                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                                <label htmlFor="phone-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                                     WhatsApp / Contact Number *
                                                 </label>
-                                                <input
-                                                    type="tel"
-                                                    name="phone"
-                                                    required
-                                                    placeholder="e.g. 9876543210"
-                                                    value={formData.phone}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all"
-                                                />
+                                                <div className="relative">
+                                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">
+                                                        +91
+                                                    </span>
+                                                    <input
+                                                        id="phone-input"
+                                                        type="tel"
+                                                        name="phone"
+                                                        required
+                                                        inputMode="numeric"
+                                                        maxLength={10}
+                                                        pattern="[0-9]{10}"
+                                                        placeholder="9876543210"
+                                                        value={formData.phone}
+                                                        onChange={handleInputChange}
+                                                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all font-mono"
+                                                    />
+                                                </div>
+                                                {formData.phone && formData.phone.length > 0 && formData.phone.length < 10 && (
+                                                    <p className="text-[11px] text-amber-600 mt-1 font-medium">
+                                                        {10 - formData.phone.length} more digit{10 - formData.phone.length === 1 ? "" : "s"} required (10 digits needed)
+                                                    </p>
+                                                )}
                                             </div>
 
                                             {/* Year of Study */}
@@ -820,11 +901,21 @@ export default function JoinTheClubPage() {
 
                                             {/* Dynamic QR Code */}
                                             <div className="flex flex-col items-center justify-center space-y-4">
-                                                <div className="w-56 h-56 bg-white p-3 rounded-3xl shadow-md border-2 border-slate-200 flex items-center justify-center transition-transform hover:scale-105">
+                                                <div className="w-64 sm:w-72 max-w-full bg-white p-2.5 rounded-3xl shadow-md border-2 border-slate-200 flex items-center justify-center transition-transform hover:scale-[1.02] relative">
                                                     <img
-                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiDeepLink)}`}
+                                                        key={`${paymentConfig.selectedQrId || "qr"}-${paymentQrImage}-${clubUpiId}`}
+                                                        src={
+                                                            paymentConfig.qrMode === "dynamic_upi" || qrImageError
+                                                                ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiDeepLink)}`
+                                                                : (paymentQrImage.startsWith("data:") || paymentQrImage.includes("?")
+                                                                    ? paymentQrImage
+                                                                    : `${paymentQrImage}?v=${encodeURIComponent(paymentConfig.lastUpdated || paymentConfig.selectedQrId || "1")}`)
+                                                        }
                                                         alt="Rotaract BMSCE UPI QR Code"
-                                                        className="w-full h-full object-contain rounded-2xl"
+                                                        className="w-full h-auto object-contain rounded-2xl"
+                                                        onError={() => {
+                                                            setQrImageError(true);
+                                                        }}
                                                     />
                                                 </div>
 
@@ -971,20 +1062,21 @@ export default function JoinTheClubPage() {
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         {/* Payee Name (Mandatory) */}
                                                         <div>
-                                                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                                                                Payee Name (If paid online)
+                                                            <label htmlFor="payee-name-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                                                Payee Name *
                                                             </label>
                                                             <input
                                                                 id="payee-name-input"
                                                                 type="text"
                                                                 name="payeeName"
-                                                                placeholder="e.g. Rahul Sharma / Parent's Name (if paid online)"
+                                                                required
+                                                                placeholder="e.g. Rahul Sharma / Parent's Name"
                                                                 value={formData.payeeName}
                                                                 onChange={handleInputChange}
                                                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 font-medium transition-all"
                                                             />
                                                             <span className="block text-[11px] text-slate-400 mt-1">
-                                                                Name of person / UPI account from which payment was made
+                                                                Account holder&apos;s name as displayed in your UPI payment screenshot (Mandatory)
                                                             </span>
                                                         </div>
 
@@ -1021,7 +1113,7 @@ export default function JoinTheClubPage() {
                                                     {CLUB_MEMBERSHIP.name}
                                                 </p>
                                                 <p className="text-xs text-slate-500">
-                                                    Application logged to official Google Sheet & screenshot stored in Drive.
+                                                    ₹320 for 4 years • official rotaract BMSCE membership (RM)
                                                 </p>
                                             </div>
 
@@ -1030,6 +1122,7 @@ export default function JoinTheClubPage() {
                                                 <p className="text-3xl font-extrabold text-rotaract-cranberry font-heading">
                                                     ₹{payableAmount}
                                                 </p>
+                                                <span className="text-[11px] text-slate-400 block">for 4 years</span>
                                             </div>
                                         </div>
 
@@ -1185,7 +1278,7 @@ export default function JoinTheClubPage() {
                                             <div>
                                                 <span className="text-slate-400 block font-medium">Membership Tier:</span>
                                                 <span className="font-extrabold text-rotaract-navy text-sm">
-                                                    {receiptData?.membershipType}
+                                                    {receiptData?.membershipType} (4 Years)
                                                 </span>
                                             </div>
 
@@ -1217,7 +1310,7 @@ export default function JoinTheClubPage() {
                                         <div className="p-4 bg-rotaract-navy/5 rounded-2xl border border-rotaract-navy/10 flex items-center justify-between">
                                             <div>
                                                 <span className="text-xs text-slate-500 font-medium">Total Membership Fee</span>
-                                                <p className="text-xs text-slate-400">Membership Valid: 2026–2027</p>
+                                                <p className="text-xs text-slate-400">Membership Valid: 4 Years (2026–2030)</p>
                                             </div>
                                             <span className="text-2xl font-extrabold font-heading text-rotaract-cranberry">
                                                 ₹{receiptData?.amount}.00
@@ -1225,33 +1318,26 @@ export default function JoinTheClubPage() {
                                         </div>
                                     </div>
 
-                                    {/* Next Steps Onboarding Card */}
-                                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-left text-xs space-y-2 text-slate-600">
-                                        <p className="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
-                                            <Sparkles className="w-4 h-4 text-rotaract-gold" />
-                                            <span>Next Steps:</span>
-                                        </p>
-                                        <ul className="list-disc pl-4 space-y-1.5 font-light">
-                                            <li>Our Joint Secretary & Membership team will review your payment screenshot and add you to the official WhatsApp community (+91 {receiptData?.phone}).</li>
-                                            <li>Your record has been logged in our membership Google Sheet and Drive folder.</li>
-                                            <li>Keep your receipt ID (<strong className="font-semibold">{receiptData?.receiptId}</strong>) handy during campus induction and kit distribution.</li>
-                                        </ul>
+                                    {/* Updates & WhatsApp Onboarding Notice */}
+                                    <div className="p-5 sm:p-6 bg-slate-50 rounded-2xl border border-slate-200 text-left flex items-start gap-3.5 shadow-sm">
+                                        <div className="w-8 h-8 rounded-xl bg-rotaract-cranberry/10 text-rotaract-cranberry flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <Mail className="w-4 h-4" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs sm:text-sm font-bold text-slate-800">
+                                                Updates & Membership Induction
+                                            </p>
+                                            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                                                You will be notified about the updates soon through mail and added to a WhatsApp group within 2 weeks.
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* Action Buttons */}
                                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => window.print()}
-                                            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-rotaract-navy text-white text-xs font-bold hover:bg-rotaract-dark transition-all flex items-center justify-center gap-2 shadow-sm"
-                                        >
-                                            <Printer className="w-4 h-4" />
-                                            <span>Print / Save Receipt PDF</span>
-                                        </button>
-
                                         <Link
                                             href="/"
-                                            className="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-all text-center"
+                                            className="w-full sm:w-auto px-8 py-3 rounded-xl bg-rotaract-navy text-white text-xs font-bold hover:bg-rotaract-dark transition-all text-center shadow-sm"
                                         >
                                             Return to Home
                                         </Link>
@@ -1264,7 +1350,7 @@ export default function JoinTheClubPage() {
                                                 setReceiptData(null);
                                                 handleRemoveScreenshot();
                                             }}
-                                            className="w-full sm:w-auto px-6 py-3 rounded-xl text-slate-500 text-xs hover:text-rotaract-cranberry transition-all"
+                                            className="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 hover:text-rotaract-cranberry transition-all"
                                         >
                                             Submit Another Application
                                         </button>

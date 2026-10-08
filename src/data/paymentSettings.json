@@ -1,0 +1,38 @@
+{
+  "qrImageUrl": "/images/payment-qr.jpg",
+  "upiId": "vaishnavisrinivasa26-1@okaxis",
+  "payeeName": "Rotaract Club BMSCE",
+  "amount": 320,
+  "notes": "Scan with any UPI app to pay ₹320 4-year club membership fee.",
+  "lastUpdated": "5 Oct 2026, 8:48 am",
+  "updatedBy": "Authorized Admin",
+  "qrMode": "custom_image",
+  "selectedQrId": "qr-axis-bank",
+  "availableQrs": [
+    {
+      "id": "qr-axis-bank",
+      "title": "Axis Bank QR (Official Account)",
+      "qrImageUrl": "/images/payment-qr.jpg",
+      "upiId": "vaishnavisrinivasa26-1@okaxis",
+      "payeeName": "Rotaract Club BMSCE",
+      "bank": "Axis Bank",
+      "accountHolder": "Rtr. Vaishnavi S",
+      "badge": "Axis Bank",
+      "isPreset": true,
+      "description": "Official Axis Bank QR code for club membership registrations"
+    },
+    {
+      "id": "qr-sbi-bank",
+      "title": "State Bank of India (SBI) QR",
+      "qrImageUrl": "/images/payment-qr-sbi.jpeg",
+      "upiId": "vaishnavisrinivasa26-1@oksbi",
+      "payeeName": "Rotaract Club BMSCE",
+      "bank": "State Bank of India",
+      "accountHolder": "Rtr. Vaishnavi S",
+      "badge": "SBI Account",
+      "isPreset": true,
+      "description": "Alternative State Bank of India QR code for club registrations"
+    }
+  ],
+  "qrImageBackup": ""
+}

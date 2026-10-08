@@ -18,12 +18,36 @@ import {
     AlertCircle,
     Upload,
     Image as ImageIcon,
-    Key,
     ExternalLink,
     Clock,
-    Laptop
+    Laptop,
+    QrCode,
+    FileText,
+    RotateCcw,
+    Check,
+    Copy,
+    Download,
+    RefreshCw,
+    Eye,
+    X,
+    ZoomIn
 } from "lucide-react";
 import upcomingEventsRaw from "@/data/upcomingEvents.json";
+import paymentSettingsRaw from "@/data/paymentSettings.json";
+
+export interface QrItem {
+    id: string;
+    title: string;
+    qrImageUrl: string;
+    upiId: string;
+    payeeName: string;
+    bank?: string;
+    accountHolder?: string;
+    badge?: string;
+    isPreset?: boolean;
+    description?: string;
+    dateAdded?: string;
+}
 
 interface EventItem {
     id: string;
@@ -43,26 +67,10 @@ interface EventItem {
 export default function AdminPortalPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [adminUserEmail, setAdminUserEmail] = useState<string>("");
-    const [loginTab, setLoginTab] = useState<"passcode" | "google">("passcode");
-    const [selectedAdminProfile, setSelectedAdminProfile] = useState<string>("rtrsharan318@gmail.com");
-    const [customAdminEmail, setCustomAdminEmail] = useState<string>("");
-    const [passcode, setPasscode] = useState("");
     const [loginError, setLoginError] = useState("");
 
-    // Allowed Admin profiles configured in .env.local
-    const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "";
-    const allowedEmails = allowedEmailsEnv
-        .split(",")
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
-    const adminProfiles = allowedEmails.length > 0 ? allowedEmails : [
-        "rtrsharan318@gmail.com",
-        "rtrsamyakr@gmail.com",
-        "rtrhimashree@gmail.com"
-    ];
-
-    // Active Tab: 'members' | 'events'
-    const [activeTab, setActiveTab] = useState<"members" | "events">("members");
+    // Active Tab: 'members' | 'qrcode' | 'events'
+    const [activeTab, setActiveTab] = useState<"members" | "qrcode" | "events">("members");
 
     // --- MEMBER REGISTRATION FORM STATE ---
     const [memberForm, setMemberForm] = useState({
@@ -74,9 +82,21 @@ export default function AdminPortalPage() {
         phone: "",
         bloodGroup: "Prefer not to say",
         membershipType: "RI - Rotary International membership",
+        amount: "800",
         payeeName: "",
+        qrUsed: "Vaishnavi QR1",
+        remarks: "",
         timestamp: "",
     });
+    const [lastRegisteredMember, setLastRegisteredMember] = useState<{
+        name: string;
+        usn: string;
+        amount: number;
+        membershipType: string;
+        receiptId: string;
+        qrUsed?: string;
+        remarks?: string;
+    } | null>(null);
     const [registrationDesk, setRegistrationDesk] = useState<string>("Desk 1 (Sharan)");
     const [isSubmittingMember, setIsSubmittingMember] = useState(false);
     const [memberSubmittedSuccess, setMemberSubmittedSuccess] = useState(false);
@@ -91,8 +111,23 @@ export default function AdminPortalPage() {
             setRegistrationDesk("Desk 2 (Samyak)");
         } else if (adminUserEmail.toLowerCase().includes("hima")) {
             setRegistrationDesk("Desk 3 (Himashree)");
+        } else if (adminUserEmail.toLowerCase().includes("neerva")) {
+            setRegistrationDesk("Desk 4 (Neerva)");
+        } else if (adminUserEmail.toLowerCase().includes("geethika")) {
+            setRegistrationDesk("Desk 5 (Geethika)");
+        } else if (adminUserEmail.toLowerCase().includes("aman")) {
+            setRegistrationDesk("Desk 6 (Aman)");
         } else {
             setRegistrationDesk("Desk 1 (Sharan)");
+        }
+
+        const savedQr = localStorage.getItem("rotaract_admin_selected_qr");
+        if (savedQr) {
+            setMemberForm((prev) => ({ ...prev, qrUsed: savedQr }));
+        } else if (adminUserEmail.toLowerCase().includes("sharan")) {
+            setMemberForm((prev) => ({ ...prev, qrUsed: "Sharanu QR" }));
+        } else if (adminUserEmail.toLowerCase().includes("hima")) {
+            setMemberForm((prev) => ({ ...prev, qrUsed: "Himashree QR" }));
         }
     }, [adminUserEmail]);
 
@@ -145,12 +180,33 @@ export default function AdminPortalPage() {
                     return;
                 }
 
-                // Get configured allowed emails list
-                const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "";
-                const allowedEmails = allowedEmailsEnv
+                // Authoritative allowed admin emails list
+                const BUILTIN_ADMIN_EMAILS = [
+                    "rtrsharan318@gmail.com",
+                    "rtrsamyakr@gmail.com",
+                    "rtrhimashree@gmail.com",
+                    "himashreeb.cd23@bmsce.ac.in",
+                    "vaishnavis.cs24@bmsce.ac.in",
+                    "mohammedhassaan.ec24@bmsce.ac.in",
+                    "sushanth0087@gmail.com",
+                    "sushanth007@gmail.com",
+                    "neervanegi.cs25@bmsce.ac.in",
+                    "geethika.cs24@bmsce.ac.in",
+                    "aman.cs25@bmsce.ac.in"
+                ];
+
+                const envEmails = (process.env.NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS || "")
                     .split(",")
                     .map((e) => e.trim().toLowerCase())
                     .filter(Boolean);
+
+                // Merge and deduplicate both built-in emails and env variables
+                const allowedEmails = Array.from(
+                    new Set([
+                        ...BUILTIN_ADMIN_EMAILS.map((e) => e.trim().toLowerCase()),
+                        ...envEmails
+                    ])
+                );
 
                 // If whitelist is set, enforce matching
                 if (allowedEmails.length > 0 && !allowedEmails.includes(userEmail)) {
@@ -187,37 +243,6 @@ export default function AdminPortalPage() {
         prompt: "select_account",
     });
 
-    // Handle Passcode Login
-    const handlePasscodeLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoginError("");
-
-        const chosenEmail = (selectedAdminProfile === "custom" ? customAdminEmail : selectedAdminProfile).trim().toLowerCase();
-
-        if (!chosenEmail) {
-            setLoginError("Please choose or enter an authorized admin email address.");
-            return;
-        }
-
-        const expectedPasscode = process.env.NEXT_PUBLIC_ADMIN_PASSCODE || "rotaract2026";
-
-        if (!passcode) {
-            setLoginError("Please enter your admin passcode.");
-            return;
-        }
-
-        if (passcode.trim() !== expectedPasscode.trim()) {
-            setLoginError("Incorrect admin passcode. (Default: rotaract2026)");
-            return;
-        }
-
-        localStorage.setItem("rotaract_admin_auth", "true");
-        localStorage.setItem("rotaract_admin_user", chosenEmail);
-        setAdminUserEmail(chosenEmail);
-        setIsAuthenticated(true);
-        setLoginError("");
-    };
-
     // Restore existing admin session on mount
     useEffect(() => {
         const storedAuth = localStorage.getItem("rotaract_admin_auth");
@@ -248,6 +273,401 @@ export default function AdminPortalPage() {
         localStorage.setItem("rotaract_events_data", JSON.stringify(updatedList));
     };
 
+    // --- QR CODE & PAYMENT CONFIG STATE ---
+    const [qrConfig, setQrConfig] = useState({
+        qrImageUrl: paymentSettingsRaw.qrImageUrl || "/images/payment-qr.jpg",
+        upiId: paymentSettingsRaw.upiId || "vaishnavisrinivasa26-1@okaxis",
+        payeeName: paymentSettingsRaw.payeeName || "Rotaract Club BMSCE",
+        amount: Number(paymentSettingsRaw.amount) || 320,
+        notes: paymentSettingsRaw.notes || "Scan with any UPI app to pay ₹320 4-year club membership fee.",
+        lastUpdated: paymentSettingsRaw.lastUpdated || "",
+        updatedBy: paymentSettingsRaw.updatedBy || "",
+        qrMode: ((paymentSettingsRaw as any).qrMode as "custom_image" | "dynamic_upi" | "default") || "custom_image",
+        selectedQrId: (paymentSettingsRaw as any).selectedQrId || "qr-axis-bank",
+        availableQrs: ((paymentSettingsRaw as any).availableQrs as QrItem[]) || [],
+    });
+    const [previewQrImage, setPreviewQrImage] = useState<string>(
+        paymentSettingsRaw.qrImageUrl || "/images/payment-qr.jpg"
+    );
+    const [selectedQrMode, setSelectedQrMode] = useState<"custom_image" | "dynamic_upi" | "default">(
+        (paymentSettingsRaw as any).qrMode === "dynamic_upi" ? "dynamic_upi" : "custom_image"
+    );
+    const [isSavingQr, setIsSavingQr] = useState(false);
+    const [qrSuccessMsg, setQrSuccessMsg] = useState("");
+    const [qrErrorMsg, setQrErrorMsg] = useState("");
+    const [isResettingQr, setIsResettingQr] = useState(false);
+    const [isCopiedAdminUpi, setIsCopiedAdminUpi] = useState(false);
+    const [qrUploadFileName, setQrUploadFileName] = useState("");
+
+    // QR Code Gallery & Library states
+    const [selectingQrId, setSelectingQrId] = useState<string | null>(null);
+    const [showAddQrModal, setShowAddQrModal] = useState(false);
+    const [isAddingQr, setIsAddingQr] = useState(false);
+    const [previewQrModal, setPreviewQrModal] = useState<QrItem | null>(null);
+    const [newQrForm, setNewQrForm] = useState({
+        title: "",
+        upiId: "",
+        payeeName: "Rotaract Club BMSCE",
+        bank: "",
+        description: "",
+        imageData: "",
+        fileName: "",
+        selectImmediately: true,
+    });
+
+    // Load QR settings from API / localStorage on mount
+    useEffect(() => {
+        const loadQrSettings = async () => {
+            const localSettings = localStorage.getItem("rotaract_custom_qr_settings");
+            if (localSettings) {
+                try {
+                    const parsed = JSON.parse(localSettings);
+                    setQrConfig(parsed);
+                    setPreviewQrImage(parsed.qrImageUrl || "/images/payment-qr.jpg");
+                    setSelectedQrMode(parsed.qrMode === "dynamic_upi" ? "dynamic_upi" : "custom_image");
+                } catch {
+                    // ignore
+                }
+            }
+
+            try {
+                const res = await fetch(`/api/admin/qr-settings?t=${Date.now()}`, {
+                    cache: "no-store",
+                    headers: {
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        Pragma: "no-cache",
+                    },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.settings) {
+                        setQrConfig(data.settings);
+                        setPreviewQrImage(data.settings.qrImageUrl || "/images/payment-qr.jpg");
+                        setSelectedQrMode(data.settings.qrMode === "dynamic_upi" ? "dynamic_upi" : "custom_image");
+                        localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
+                    }
+                }
+            } catch (err) {
+                console.warn("Could not fetch remote QR settings, using local/defaults:", err);
+            }
+        };
+
+        loadQrSettings();
+    }, []);
+
+    const previewDeepLink = `upi://pay?pa=${qrConfig.upiId.trim()}&pn=${encodeURIComponent(qrConfig.payeeName.trim() || "Rotaract Club BMSCE")}&am=${qrConfig.amount}&cu=INR&tn=Rotaract+RM+Fee`;
+
+    const livePreviewImageUrl = selectedQrMode === "dynamic_upi"
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(previewDeepLink)}`
+        : previewQrImage;
+
+    const handleQrImageUpload = (file: File) => {
+        if (!file) return;
+
+        if (!file.type.startsWith("image/")) {
+            setQrErrorMsg("Please upload a valid image file (PNG, JPG, JPEG, WEBP).");
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setQrErrorMsg("QR image file size exceeds 5MB. Please upload a smaller image.");
+            return;
+        }
+
+        setQrErrorMsg("");
+        setQrUploadFileName(file.name);
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const result = reader.result as string;
+            setPreviewQrImage(result);
+            setSelectedQrMode("custom_image");
+            setQrConfig((prev) => ({
+                ...prev,
+                qrImageUrl: result,
+                qrMode: "custom_image",
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // Select an existing QR code card from the gallery and activate on live site
+    const handleSelectQrCard = async (item: QrItem) => {
+        setSelectingQrId(item.id);
+        setQrErrorMsg("");
+        setQrSuccessMsg("");
+
+        // Immediate responsive local update
+        setPreviewQrImage(item.qrImageUrl);
+        setSelectedQrMode("custom_image");
+        const optimistic = {
+            ...qrConfig,
+            selectedQrId: item.id,
+            qrImageUrl: item.qrImageUrl,
+            upiId: item.upiId,
+            payeeName: item.payeeName || qrConfig.payeeName,
+            qrMode: "custom_image" as const,
+        };
+        setQrConfig(optimistic);
+        localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(optimistic));
+        window.dispatchEvent(new CustomEvent("rotaract_qr_updated", { detail: optimistic }));
+
+        try {
+            const res = await fetch("/api/admin/qr-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "select",
+                    qrId: item.id,
+                    updatedBy: adminUserEmail || "Authorized Admin",
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Failed to switch QR code.");
+            }
+            setQrConfig(data.settings);
+            setPreviewQrImage(data.settings.qrImageUrl);
+            localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
+            window.dispatchEvent(new CustomEvent("rotaract_qr_updated", { detail: data.settings }));
+            setQrSuccessMsg(`"${item.title}" is now active on the Join Us page!`);
+            setTimeout(() => setQrSuccessMsg(""), 5000);
+        } catch (err: any) {
+            setQrErrorMsg(err.message || "Failed to switch QR code.");
+        } finally {
+            setSelectingQrId(null);
+        }
+    };
+
+    // Upload & add new QR code to the library
+    const handleAddNewQr = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newQrForm.imageData) {
+            setQrErrorMsg("Please choose a QR code image to upload.");
+            return;
+        }
+        if (!newQrForm.upiId || !newQrForm.upiId.includes("@")) {
+            setQrErrorMsg("Please enter a valid UPI ID (e.g. username@bank).");
+            return;
+        }
+
+        setIsAddingQr(true);
+        setQrErrorMsg("");
+        setQrSuccessMsg("");
+
+        try {
+            const res = await fetch("/api/admin/qr-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "add_qr",
+                    title: newQrForm.title,
+                    upiId: newQrForm.upiId.trim(),
+                    payeeName: newQrForm.payeeName.trim() || qrConfig.payeeName,
+                    bank: newQrForm.bank.trim() || "Club Account",
+                    description: newQrForm.description.trim(),
+                    imageData: newQrForm.imageData,
+                    selectImmediately: newQrForm.selectImmediately,
+                    updatedBy: adminUserEmail || "Authorized Admin",
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Failed to add QR code.");
+            }
+
+            setQrConfig(data.settings);
+            if (newQrForm.selectImmediately) {
+                setPreviewQrImage(data.settings.qrImageUrl);
+                setSelectedQrMode("custom_image");
+            }
+            localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
+            window.dispatchEvent(new CustomEvent("rotaract_qr_updated", { detail: data.settings }));
+
+            setShowAddQrModal(false);
+            setNewQrForm({
+                title: "",
+                upiId: "",
+                payeeName: "Rotaract Club BMSCE",
+                bank: "",
+                description: "",
+                imageData: "",
+                fileName: "",
+                selectImmediately: true,
+            });
+            setQrSuccessMsg(data.message || "New QR code added to library!");
+            setTimeout(() => setQrSuccessMsg(""), 5000);
+        } catch (err: any) {
+            setQrErrorMsg(err.message || "Failed to upload QR code.");
+        } finally {
+            setIsAddingQr(false);
+        }
+    };
+
+    // Remove a custom QR code from the library
+    const handleDeleteQr = async (qrId: string, title: string) => {
+        if (!confirm(`Are you sure you want to remove "${title}" from the QR library?`)) {
+            return;
+        }
+        try {
+            const res = await fetch("/api/admin/qr-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "delete_qr",
+                    qrId,
+                    updatedBy: adminUserEmail || "Authorized Admin",
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Failed to delete QR code.");
+            }
+            setQrConfig(data.settings);
+            setPreviewQrImage(data.settings.qrImageUrl);
+            localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
+            window.dispatchEvent(new CustomEvent("rotaract_qr_updated", { detail: data.settings }));
+            setQrSuccessMsg(`"${title}" was removed from the QR library.`);
+            setTimeout(() => setQrSuccessMsg(""), 5000);
+        } catch (err: any) {
+            setQrErrorMsg(err.message || "Failed to delete QR code.");
+        }
+    };
+
+    const handleModalImageUpload = (file: File) => {
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            setQrErrorMsg("Please select an image file (PNG, JPG, JPEG, WEBP).");
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setQrErrorMsg("File size exceeds 5MB.");
+            return;
+        }
+        setQrErrorMsg("");
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setNewQrForm((prev) => ({
+                ...prev,
+                imageData: reader.result as string,
+                fileName: file.name,
+                title: prev.title || file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleSaveQrConfig = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingQr(true);
+        setQrErrorMsg("");
+        setQrSuccessMsg("");
+
+        try {
+            if (!qrConfig.upiId || !qrConfig.upiId.includes("@")) {
+                setQrErrorMsg("Please enter a valid UPI ID (e.g. username@bank).");
+                setIsSavingQr(false);
+                return;
+            }
+
+            const payload = {
+                qrImageUrl: selectedQrMode === "dynamic_upi"
+                    ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(previewDeepLink)}`
+                    : previewQrImage,
+                upiId: qrConfig.upiId.trim(),
+                payeeName: qrConfig.payeeName.trim(),
+                amount: Number(qrConfig.amount) || 320,
+                notes: qrConfig.notes || "",
+                updatedBy: adminUserEmail || "Authorized Admin",
+                qrMode: selectedQrMode,
+                selectedQrId: qrConfig.selectedQrId,
+            };
+
+            const res = await fetch("/api/admin/qr-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Failed to update QR code.");
+            }
+
+            const savedSettings = data.settings;
+            setQrConfig(savedSettings);
+            setPreviewQrImage(savedSettings.qrImageUrl);
+            localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(savedSettings));
+            window.dispatchEvent(new CustomEvent("rotaract_qr_updated", { detail: savedSettings }));
+
+            setQrSuccessMsg("Payment QR code and UPI details updated successfully! Live website will now display the new QR code.");
+            setTimeout(() => setQrSuccessMsg(""), 6000);
+        } catch (err: any) {
+            console.error("Save QR error:", err);
+            setQrErrorMsg(err.message || "Failed to save QR configuration.");
+        } finally {
+            setIsSavingQr(false);
+        }
+    };
+
+    const handleResetQr = async () => {
+        if (!confirm("Are you sure you want to reset the payment QR code back to the club's default?")) {
+            return;
+        }
+
+        setIsResettingQr(true);
+        setQrErrorMsg("");
+        setQrSuccessMsg("");
+
+        try {
+            const res = await fetch("/api/admin/qr-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    isReset: true,
+                    updatedBy: adminUserEmail || "Authorized Admin",
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Failed to reset QR code.");
+            }
+
+            const defaultSettings = data.settings;
+            setQrConfig(defaultSettings);
+            setPreviewQrImage(defaultSettings.qrImageUrl);
+            setSelectedQrMode("custom_image");
+            setQrUploadFileName("");
+            localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(defaultSettings));
+            window.dispatchEvent(new CustomEvent("rotaract_qr_updated", { detail: defaultSettings }));
+
+            setQrSuccessMsg("Payment QR code successfully reset to default club QR.");
+            setTimeout(() => setQrSuccessMsg(""), 5000);
+        } catch (err: any) {
+            console.error("Reset QR error:", err);
+            setQrErrorMsg(err.message || "Failed to reset QR code.");
+        } finally {
+            setIsResettingQr(false);
+        }
+    };
+
+    const copyAdminUpi = () => {
+        if (navigator.clipboard && qrConfig.upiId) {
+            navigator.clipboard.writeText(qrConfig.upiId);
+            setIsCopiedAdminUpi(true);
+            setTimeout(() => setIsCopiedAdminUpi(false), 2000);
+        }
+    };
+
+    const downloadCurrentQr = () => {
+        const link = document.createElement("a");
+        link.href = livePreviewImageUrl;
+        link.download = `Rotaract_BMSCE_QR_${Date.now()}.png`;
+        link.target = "_blank";
+        link.click();
+    };
+
     const handleLogout = () => {
         try {
             googleLogout();
@@ -268,17 +688,6 @@ export default function AdminPortalPage() {
         setMemberError("");
         setMemberSubmittedSuccess(false);
 
-        const memberSheetUrl =
-            process.env.NEXT_PUBLIC_JOIN_SHEET_URL ||
-            process.env.NEXT_PUBLIC_MEMBER_SHEET_URL ||
-            process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
-
-        if (!memberSheetUrl) {
-            setMemberError("Sheet webhook URL is missing in environment variables.");
-            setIsSubmittingMember(false);
-            return;
-        }
-
         const now = new Date();
         const currentTimestamp =
             (memberForm.timestamp && memberForm.timestamp.trim()) ||
@@ -287,8 +696,14 @@ export default function AdminPortalPage() {
                 timeStyle: "short",
             });
 
+        const defaultStdAmount = memberForm.membershipType.startsWith("RI") ? 800 : 320;
+        const parsedAmount =
+            memberForm.amount !== "" && !isNaN(Number(memberForm.amount))
+                ? Number(memberForm.amount)
+                : defaultStdAmount;
+
         try {
-            const payload = JSON.stringify({
+            const payload = {
                 type: "NEW_MEMBER_REGISTRATION",
                 receiptId: `RTR-ADM-${Date.now().toString().slice(-6)}`,
                 desk: registrationDesk,
@@ -302,22 +717,38 @@ export default function AdminPortalPage() {
                 bloodGroup: memberForm.bloodGroup,
                 membershipType: memberForm.membershipType,
                 payeeName: memberForm.payeeName,
-                amount: memberForm.membershipType.startsWith("RI") ? 800 : 320,
+                amount: parsedAmount,
+                qrUsed: memberForm.qrUsed || "Vaishnavi QR1",
+                paymentQr: memberForm.qrUsed || "Vaishnavi QR1",
+                remarks: memberForm.remarks || "",
                 timestamp: currentTimestamp,
                 registeredAt: currentTimestamp,
-                addedBy: adminUserEmail || "Admin",
+                addedBy: adminUserEmail || registrationDesk,
+            };
+
+            const response = await fetch("/api/admin/register-member", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
             });
 
-            // Send payload as text/plain to bypass CORS preflight restrictions in Google Apps Script
-            await fetch(memberSheetUrl, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "text/plain" },
-                body: payload,
-            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || "Failed to record member registration into Google Sheet.");
+            }
 
             setIsSubmittingMember(false);
             setMemberSubmittedSuccess(true);
+            setLastRegisteredMember({
+                name: memberForm.fullName,
+                usn: memberForm.usn,
+                amount: parsedAmount,
+                membershipType: memberForm.membershipType,
+                receiptId: payload.receiptId,
+                qrUsed: memberForm.qrUsed || "Vaishnavi QR1",
+                remarks: memberForm.remarks || "",
+            });
             setMemberForm({
                 fullName: "",
                 usn: "",
@@ -327,16 +758,19 @@ export default function AdminPortalPage() {
                 phone: "",
                 bloodGroup: "Prefer not to say",
                 membershipType: "RI - Rotary International membership",
+                amount: "800",
                 payeeName: "",
+                qrUsed: memberForm.qrUsed || "Vaishnavi QR1",
+                remarks: "",
                 timestamp: new Date().toLocaleString("en-IN", {
                     dateStyle: "medium",
                     timeStyle: "short",
                 }),
             });
-        } catch (err) {
+        } catch (err: any) {
             console.error("Member registration error:", err);
             setIsSubmittingMember(false);
-            setMemberError("Failed to record member registration. Check network connection.");
+            setMemberError(err?.message || "Failed to record member registration. Check network connection.");
         }
     };
 
@@ -417,160 +851,50 @@ export default function AdminPortalPage() {
                         </p>
                     </div>
 
-                    {/* Login Tab Switcher */}
-                    <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setLoginTab("passcode");
-                                setLoginError("");
-                            }}
-                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                                loginTab === "passcode"
-                                    ? "bg-white text-rotaract-navy shadow-sm"
-                                    : "text-slate-500 hover:text-slate-800"
-                            }`}
-                        >
-                            <Key className="w-3.5 h-3.5 text-rotaract-gold" />
-                            <span>Admin Passcode</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setLoginTab("google");
-                                setLoginError("");
-                            }}
-                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                                loginTab === "google"
-                                    ? "bg-white text-rotaract-navy shadow-sm"
-                                    : "text-slate-500 hover:text-slate-800"
-                            }`}
-                        >
-                            <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                            </svg>
-                            <span>Google OAuth</span>
-                        </button>
-                    </div>
+                    <p className="text-xs text-slate-600 text-center leading-relaxed">
+                        Please sign in with your authorized Google account to manage member registrations and live events.
+                    </p>
 
                     {loginError && (
-                        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                            <span>{loginError}</span>
+                        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-start gap-2.5">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span className="leading-snug">{loginError}</span>
                         </div>
                     )}
 
-                    {/* TAB 1: PASSCODE LOGIN */}
-                    {loginTab === "passcode" && (
-                        <form onSubmit={handlePasscodeLogin} className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-700">Choose Admin Email</label>
-                                <select
-                                    value={selectedAdminProfile}
-                                    onChange={(e) => setSelectedAdminProfile(e.target.value)}
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-gold"
-                                >
-                                    {adminProfiles.map((email) => (
-                                        <option key={email} value={email}>
-                                            {email} {email === "rtrsharan318@gmail.com" ? "★ (Lead Admin)" : "(Board Admin)"}
-                                        </option>
-                                    ))}
-                                    <option value="custom">Enter custom admin email...</option>
-                                </select>
-                            </div>
-
-                            {selectedAdminProfile === "custom" && (
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700">Custom Admin Email</label>
-                                    <input
-                                        type="email"
-                                        placeholder="admin@rotaractbmsce.org"
-                                        value={customAdminEmail}
-                                        onChange={(e) => setCustomAdminEmail(e.target.value)}
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-gold"
-                                    />
-                                </div>
+                    <div className="space-y-4 pt-1">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setLoginError("");
+                                loginWithGoogle({ prompt: "select_account" });
+                            }}
+                            disabled={isAuthenticating}
+                            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-2xl shadow-sm hover:shadow text-sm font-semibold text-slate-700 transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+                        >
+                            {isAuthenticating ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin text-rotaract-cranberry" />
+                                    <span>Verifying Google Account...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                                    </svg>
+                                    <span>Sign in with Google</span>
+                                </>
                             )}
+                        </button>
 
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-xs font-semibold text-slate-700">Admin Passcode</label>
-                                    <span className="text-[10px] text-slate-400 font-mono">rotaract2026</span>
-                                </div>
-                                <input
-                                    type="password"
-                                    placeholder="Enter admin passcode"
-                                    value={passcode}
-                                    onChange={(e) => setPasscode(e.target.value)}
-                                    required
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-gold"
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                className="w-full py-3 bg-rotaract-navy hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
-                            >
-                                <ShieldCheck className="w-4 h-4 text-rotaract-gold" />
-                                <span>Sign In to Admin Dashboard</span>
-                            </button>
-
-                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
-                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                                <span>Instant local login for whitelisted Rotaract BMSCE admins</span>
-                            </div>
-                        </form>
-                    )}
-
-                    {/* TAB 2: GOOGLE OAUTH */}
-                    {loginTab === "google" && (
-                        <div className="space-y-4">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setLoginError("");
-                                    loginWithGoogle({ prompt: "select_account" });
-                                }}
-                                disabled={isAuthenticating}
-                                className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-2xl shadow-sm hover:shadow text-sm font-semibold text-slate-700 transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
-                            >
-                                {isAuthenticating ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin text-rotaract-cranberry" />
-                                        <span>Verifying Google Account...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                                        </svg>
-                                        <span>Sign in with Google</span>
-                                    </>
-                                )}
-                            </button>
-
-                            {/* Origin mismatch troubleshooting guide */}
-                            <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 space-y-2 leading-relaxed">
-                                <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                                    <span>Seeing "Error 400: origin_mismatch"?</span>
-                                </div>
-                                <p className="text-slate-600">
-                                    Google OAuth rejects the popup before showing the account picker because <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">http://localhost:3000</code> is not registered in Google Cloud Console.
-                                </p>
-                                <p className="text-slate-700 font-medium">
-                                    💡 <strong>Instant fix:</strong> Switch to the <button type="button" onClick={() => setLoginTab("passcode")} className="text-rotaract-navy underline font-bold">Admin Passcode</button> tab above to log in immediately with your whitelisted email!
-                                </p>
-                            </div>
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                            <span>Access restricted to authorized club board members</span>
                         </div>
-                    )}
+                    </div>
                 </motion.div>
             </div>
         );
@@ -605,25 +929,33 @@ export default function AdminPortalPage() {
 
             {/* Navigation Tabs */}
             <div className="max-w-6xl mx-auto px-6 -mt-6">
-                <div className="bg-white rounded-2xl p-2 shadow-md border border-slate-200 inline-flex gap-2">
+                <div className="bg-white rounded-2xl p-2 shadow-md border border-slate-200 inline-flex flex-wrap gap-2">
                     <button
                         onClick={() => setActiveTab("members")}
-                        className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${
-                            activeTab === "members"
-                                ? "bg-rotaract-navy text-white shadow-sm"
-                                : "text-slate-600 hover:bg-slate-100"
-                        }`}
+                        className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${activeTab === "members"
+                            ? "bg-rotaract-navy text-white shadow-sm"
+                            : "text-slate-600 hover:bg-slate-100"
+                            }`}
                     >
                         <UserPlus className="w-4 h-4" />
                         <span>Register New Member</span>
                     </button>
                     <button
+                        onClick={() => setActiveTab("qrcode")}
+                        className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${activeTab === "qrcode"
+                            ? "bg-rotaract-cranberry text-white shadow-sm"
+                            : "text-slate-600 hover:bg-slate-100"
+                            }`}
+                    >
+                        <QrCode className="w-4 h-4" />
+                        <span>Change Payment QR</span>
+                    </button>
+                    <button
                         onClick={() => setActiveTab("events")}
-                        className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${
-                            activeTab === "events"
-                                ? "bg-rotaract-navy text-white shadow-sm"
-                                : "text-slate-600 hover:bg-slate-100"
-                        }`}
+                        className={`px-5 py-2.5 rounded-xl font-semibold text-xs md:text-sm flex items-center gap-2 transition-all ${activeTab === "events"
+                            ? "bg-rotaract-navy text-white shadow-sm"
+                            : "text-slate-600 hover:bg-slate-100"
+                            }`}
                     >
                         <Calendar className="w-4 h-4" />
                         <span>Update Events Website ({eventsList.length})</span>
@@ -662,7 +994,10 @@ export default function AdminPortalPage() {
                                         <option value="Desk 1 (Sharan)">Desk 1 (Sharan)</option>
                                         <option value="Desk 2 (Samyak)">Desk 2 (Samyak)</option>
                                         <option value="Desk 3 (Himashree)">Desk 3 (Himashree)</option>
-                                        <option value="Desk 4 (Support Desk)">Desk 4 (Support Desk)</option>
+                                        <option value="Desk 4 (Neerva)">Desk 4 (Neerva)</option>
+                                        <option value="Desk 5 (Geethika)">Desk 5 (Geethika)</option>
+                                        <option value="Desk 6 (Aman)">Desk 6 (Aman)</option>
+                                        <option value="Support Desk">Support Desk</option>
                                     </select>
                                 </div>
                             </div>
@@ -671,10 +1006,26 @@ export default function AdminPortalPage() {
                         {memberSubmittedSuccess && (
                             <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-3">
                                 <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
-                                <div>
-                                    <p className="font-bold">Member Successfully Registered!</p>
-                                    <p className="text-[11px] text-emerald-700">
-                                        Member details and payment records have been securely added.
+                                <div className="flex-1">
+                                    <p className="font-bold text-sm">Member Successfully Registered!</p>
+                                    <p className="text-[11px] text-emerald-700 mt-0.5 leading-relaxed">
+                                        {lastRegisteredMember ? (
+                                            <>
+                                                Recorded <strong>{lastRegisteredMember.name}</strong> ({lastRegisteredMember.usn}) with payment amount <strong className="text-emerald-900 bg-emerald-100 px-1.5 py-0.5 rounded font-bold">₹{lastRegisteredMember.amount}</strong> ({lastRegisteredMember.membershipType.startsWith("RI") ? "RI" : "RM"}).
+                                                <span className="inline-flex items-center gap-1 mx-1.5 bg-white border border-emerald-300 px-2 py-0.5 rounded text-emerald-800 font-semibold text-[10px]">
+                                                    <QrCode className="w-3 h-3 text-rotaract-cranberry" />
+                                                    {lastRegisteredMember.qrUsed}
+                                                </span>
+                                                {lastRegisteredMember.remarks && (
+                                                    <span className="inline-block bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-amber-800 font-medium text-[10px] mx-1">
+                                                        Note: {lastRegisteredMember.remarks}
+                                                    </span>
+                                                )}
+                                                Receipt ID: <span className="font-mono font-semibold">{lastRegisteredMember.receiptId}</span>.
+                                            </>
+                                        ) : (
+                                            "Member details and payment records have been securely added."
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -810,36 +1161,121 @@ export default function AdminPortalPage() {
 
                             {/* Membership & Payment Details */}
                             <div className="space-y-4 pt-2 border-t border-slate-100">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                                    Membership Type & Payment Verification
-                                </h3>
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                        Membership Type & Payment Verification
+                                    </h3>
+                                    <span className="text-[11px] text-slate-400 font-medium">
+                                        Supports custom fees & student discounts
+                                    </span>
+                                </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
                                             Type of Membership *
                                         </label>
                                         <select
                                             value={memberForm.membershipType}
-                                            onChange={(e) => setMemberForm({ ...memberForm, membershipType: e.target.value })}
+                                            onChange={(e) => {
+                                                const newType = e.target.value;
+                                                const prevDefault = memberForm.membershipType.startsWith("RI") ? "800" : "320";
+                                                const nextDefault = newType.startsWith("RI") ? "800" : "320";
+                                                const shouldUpdate = !memberForm.amount || memberForm.amount === prevDefault;
+                                                setMemberForm({
+                                                    ...memberForm,
+                                                    membershipType: newType,
+                                                    amount: shouldUpdate ? nextDefault : memberForm.amount,
+                                                });
+                                            }}
                                             className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white font-medium"
                                         >
-                                            <option value="RI - Rotary International membership">RI - Rotary International membership</option>
-                                            <option value="RM - Rotaract Club membership">RM - Rotaract Club membership</option>
+                                            <option value="RI - Rotary International membership">RI - Rotary International (Std ₹800)</option>
+                                            <option value="RM - Rotaract Club membership">RM - Rotaract Club (Std ₹320)</option>
                                         </select>
                                     </div>
 
                                     <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="block text-xs font-semibold text-slate-700">
+                                                Amount Paid (₹) *
+                                            </label>
+                                            {memberForm.amount !== "" && !isNaN(Number(memberForm.amount)) && (
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${Number(memberForm.amount) < (memberForm.membershipType.startsWith("RI") ? 800 : 320)
+                                                    ? "bg-amber-100 text-amber-700"
+                                                    : "bg-emerald-100 text-emerald-700"
+                                                    }`}>
+                                                    {Number(memberForm.amount) < (memberForm.membershipType.startsWith("RI") ? 800 : 320)
+                                                        ? `Discount: ₹${(memberForm.membershipType.startsWith("RI") ? 800 : 320) - Number(memberForm.amount)} off`
+                                                        : "Standard Fee"}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="relative">
+                                            <span className="absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm select-none">
+                                                ₹
+                                            </span>
+                                            <input
+                                                type="number"
+                                                required
+                                                min="0"
+                                                step="1"
+                                                placeholder="e.g. 800, 320, 250"
+                                                value={memberForm.amount}
+                                                onChange={(e) => setMemberForm({ ...memberForm, amount: e.target.value })}
+                                                className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                            <button
+                                                type="button"
+                                                onClick={() => setMemberForm({ ...memberForm, amount: memberForm.membershipType.startsWith("RI") ? "800" : "320" })}
+                                                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium transition cursor-pointer"
+                                                title="Reset to standard full fee"
+                                            >
+                                                Std ₹{memberForm.membershipType.startsWith("RI") ? "800" : "320"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMemberForm({ ...memberForm, amount: "250" })}
+                                                className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium transition cursor-pointer"
+                                                title="Quick discount ₹250"
+                                            >
+                                                ₹250
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMemberForm({ ...memberForm, amount: "300" })}
+                                                className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium transition cursor-pointer"
+                                                title="Quick discount ₹300"
+                                            >
+                                                ₹300
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMemberForm({ ...memberForm, amount: "0" })}
+                                                className="text-[10px] px-1.5 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium transition cursor-pointer"
+                                                title="Complimentary / waiver"
+                                            >
+                                                ₹0 (Free)
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            Payee Name <span className="font-normal text-slate-400">(If paid online)</span>
+                                            Payee Name <span className="font-normal text-slate-400">(If online)</span>
                                         </label>
                                         <input
                                             type="text"
-                                            placeholder="Account holder name on UPI (if paid online)"
+                                            placeholder="UPI account holder name"
                                             value={memberForm.payeeName}
                                             onChange={(e) => setMemberForm({ ...memberForm, payeeName: e.target.value })}
                                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
                                         />
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            Leave empty if paid in cash
+                                        </p>
                                     </div>
 
                                     <div>
@@ -872,6 +1308,63 @@ export default function AdminPortalPage() {
                                             onChange={(e) => setMemberForm({ ...memberForm, timestamp: e.target.value })}
                                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-slate-50 text-slate-700"
                                         />
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            Auto-records current time if blank
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* QR Used & Remarks Inputs */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                                <QrCode className="w-3.5 h-3.5 text-rotaract-cranberry" />
+                                                <span>Payment QR Used *</span>
+                                            </label>
+                                            <span className="text-[10px] text-slate-400 font-medium">Which QR</span>
+                                        </div>
+                                        <select
+                                            value={memberForm.qrUsed}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setMemberForm({ ...memberForm, qrUsed: val });
+                                                try {
+                                                    localStorage.setItem("rotaract_admin_selected_qr", val);
+                                                } catch {}
+                                            }}
+                                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white text-slate-800"
+                                        >
+                                            <option value="Vaishnavi QR1">Vaishnavi QR1</option>
+                                            <option value="Vaishnavi QR2">Vaishnavi QR2</option>
+                                            <option value="Sharanu QR">Sharanu QR</option>
+                                            <option value="Himashree QR">Himashree QR</option>
+                                            <option value="Cash Payment (No QR)">Cash Payment (No QR)</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            Auto-saves for consecutive desk registrations
+                                        </p>
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                                <FileText className="w-3.5 h-3.5 text-slate-500" />
+                                                <span>Remarks / Notes</span>
+                                            </label>
+                                            <span className="text-[10px] text-slate-400 font-medium">Optional</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Paid ₹200 cash & ₹120 UPI, referred by xyz, discount approval, ID card pending..."
+                                            value={memberForm.remarks}
+                                            onChange={(e) => setMemberForm({ ...memberForm, remarks: e.target.value })}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy text-slate-800 placeholder:text-slate-400"
+                                        />
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            Any desk remarks, cash note, or special instructions
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -896,6 +1389,805 @@ export default function AdminPortalPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                )}
+
+                {/* TAB: PAYMENT QR CODE & UPI SETTINGS */}
+                {activeTab === "qrcode" && (
+                    <div className="space-y-8">
+                        {/* Banner with status */}
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="space-y-1.5">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rotaract-cranberry/10 text-rotaract-cranberry text-xs font-bold">
+                                    <QrCode className="w-3.5 h-3.5" />
+                                    <span>Official Club Payment Gateway Configuration</span>
+                                </div>
+                                <h2 className="text-2xl font-bold font-heading text-rotaract-navy">
+                                    Change Club Payment QR Code & UPI
+                                </h2>
+                                <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
+                                    Select which official QR code image should be displayed on the public Join Us registration portal, or upload and manage multiple QR codes in the library.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                <a
+                                    href="/join-the-club"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-all border border-slate-200"
+                                >
+                                    <ExternalLink className="w-4 h-4 text-rotaract-navy" />
+                                    <span>View Live Join Page</span>
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={handleResetQr}
+                                    disabled={isResettingQr}
+                                    className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center justify-center gap-2 transition-all border border-rose-200 disabled:opacity-50 cursor-pointer"
+                                >
+                                    {isResettingQr ? (
+                                        <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+                                    ) : (
+                                        <RotateCcw className="w-4 h-4 text-rose-600" />
+                                    )}
+                                    <span>Reset to Axis Bank QR</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Notifications */}
+                        {qrSuccessMsg && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm rounded-2xl flex items-center gap-3 shadow-sm"
+                            >
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                                <span className="font-semibold">{qrSuccessMsg}</span>
+                            </motion.div>
+                        )}
+
+                        {qrErrorMsg && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm rounded-2xl flex items-center gap-3 shadow-sm"
+                            >
+                                <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                                <span className="font-semibold">{qrErrorMsg}</span>
+                            </motion.div>
+                        )}
+
+                        {/* QR CODE GALLERY / SELECTOR SECTION */}
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                                <div>
+                                    <h3 className="text-lg font-bold font-heading text-rotaract-navy flex items-center gap-2">
+                                        <ImageIcon className="w-5 h-5 text-rotaract-cranberry" />
+                                        <span>Available QR Code Images</span>
+                                    </h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Select one of the images below to show on the Join Us page, or upload a new QR image to the collection.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddQrModal(true)}
+                                    className="px-4 py-2 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer self-start sm:self-auto"
+                                >
+                                    <Plus className="w-4 h-4 text-rotaract-gold" />
+                                    <span>Upload New QR to Library</span>
+                                </button>
+                            </div>
+
+                            {/* Gallery Cards Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {(qrConfig.availableQrs || []).map((item) => {
+                                    const isActive = qrConfig.selectedQrId === item.id || qrConfig.qrImageUrl === item.qrImageUrl;
+                                    const isSelectingThis = selectingQrId === item.id;
+
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => {
+                                                if (!isActive && !isSelectingThis) {
+                                                    handleSelectQrCard(item);
+                                                }
+                                            }}
+                                            className={`rounded-2xl p-5 border-2 transition-all flex flex-col justify-between relative group cursor-pointer ${isActive
+                                                ? "border-emerald-500 bg-emerald-50/40 shadow-md ring-4 ring-emerald-500/20"
+                                                : "border-slate-200 bg-slate-50/60 hover:bg-white hover:border-rotaract-navy/60 hover:shadow-md"
+                                                }`}
+                                        >
+                                            {/* Card Header & Status Badge */}
+                                            <div className="flex items-center justify-between gap-2 mb-3">
+                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${isActive
+                                                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                                    : "bg-slate-100 text-slate-600 border-slate-200"
+                                                    }`}>
+                                                    {item.badge || item.bank || "Available Option"}
+                                                </span>
+
+                                                <div className="flex items-center gap-1.5">
+                                                    {isActive ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold shadow-xs">
+                                                            <Check className="w-3 h-3 stroke-[3]" />
+                                                            <span>LIVE ACTIVE</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-semibold group-hover:bg-rotaract-navy group-hover:text-white transition-colors">
+                                                            <span>Select</span>
+                                                        </span>
+                                                    )}
+
+                                                    {!item.isPreset && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteQr(item.id, item.title);
+                                                            }}
+                                                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors ml-1 cursor-pointer"
+                                                            title="Delete from library"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* QR Image Preview with Click to Zoom */}
+                                            <div className="flex flex-col items-center my-2">
+                                                <div
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setPreviewQrModal(item);
+                                                    }}
+                                                    className="w-36 h-36 bg-white p-2 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-center cursor-zoom-in group-hover:border-rotaract-navy transition-all relative overflow-hidden"
+                                                    title="Click to zoom in"
+                                                >
+                                                    <img
+                                                        src={item.qrImageUrl}
+                                                        alt={item.title}
+                                                        className="w-full h-full object-contain rounded-xl"
+                                                    />
+                                                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-1 rounded-2xl">
+                                                        <ZoomIn className="w-5 h-5" />
+                                                        <span className="text-[11px] font-bold">Zoom</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Card Content & Details */}
+                                            <div className="space-y-1.5 text-center mt-2">
+                                                <h4 className="text-sm font-bold text-slate-800 line-clamp-1" title={item.title}>
+                                                    {item.title}
+                                                </h4>
+                                                <div className="inline-flex items-center justify-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-mono text-slate-700 max-w-full">
+                                                    <span className="truncate max-w-[170px]" title={item.upiId}>{item.upiId}</span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-500 truncate" title={item.payeeName}>
+                                                    Payee: <strong>{item.payeeName || "Rotaract Club BMSCE"}</strong>
+                                                </p>
+                                            </div>
+
+                                            {/* Card Action Button */}
+                                            <div className="mt-4 pt-3 border-t border-slate-100">
+                                                {isActive ? (
+                                                    <div
+                                                        className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs"
+                                                    >
+                                                        <CheckCircle2 className="w-4 h-4" />
+                                                        <span>Showing on Join Us Page</span>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleSelectQrCard(item);
+                                                        }}
+                                                        disabled={isSelectingThis}
+                                                        className="w-full py-2.5 rounded-xl bg-rotaract-navy hover:bg-rotaract-cranberry text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-[0.99] disabled:opacity-50"
+                                                    >
+                                                        {isSelectingThis ? (
+                                                            <>
+                                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                <span>Activating...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Check className="w-4 h-4" />
+                                                                <span>Select for Join Us Page</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 2-COLUMN STUDIO GRID: FINE-TUNE & LIVE PREVIEW */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            {/* LEFT COLUMN: FINE-TUNE EDIT FORM (7 cols) */}
+                            <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+                                <div>
+                                    <h3 className="text-base font-bold font-heading text-rotaract-navy">
+                                        Fine-Tune Active QR & Payment Details
+                                    </h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Customize or override details for the currently active QR code shown above.
+                                    </p>
+                                </div>
+
+                                <form onSubmit={handleSaveQrConfig} className="space-y-6">
+                                    {/* Method Selector */}
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                                            QR Display Mode
+                                        </label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedQrMode("custom_image")}
+                                                className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${selectedQrMode === "custom_image"
+                                                    ? "border-rotaract-cranberry bg-rotaract-cranberry/5 ring-2 ring-rotaract-cranberry/20"
+                                                    : "border-slate-200 hover:border-slate-300 bg-white"
+                                                    }`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedQrMode === "custom_image"
+                                                    ? "bg-rotaract-cranberry text-white"
+                                                    : "bg-slate-100 text-slate-600"
+                                                    }`}>
+                                                    <ImageIcon className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-xs sm:text-sm text-slate-800">
+                                                        Selected QR Image
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                                        Displays the chosen high-definition bank flyer/poster QR image.
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedQrMode("dynamic_upi")}
+                                                className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${selectedQrMode === "dynamic_upi"
+                                                    ? "border-rotaract-navy bg-rotaract-navy/5 ring-2 ring-rotaract-navy/20"
+                                                    : "border-slate-200 hover:border-slate-300 bg-white"
+                                                    }`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedQrMode === "dynamic_upi"
+                                                    ? "bg-rotaract-navy text-white"
+                                                    : "bg-slate-100 text-slate-600"
+                                                    }`}>
+                                                    <RefreshCw className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-xs sm:text-sm text-slate-800">
+                                                        Auto-Generate from UPI
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                                        Generates crisp dynamic vector QR code from the UPI ID below.
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Step 2: Upload / Replace Active Image */}
+                                    {selectedQrMode === "custom_image" && (
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+                                                Replace Current Active Image (Optional)
+                                            </label>
+                                            <label className="border-2 border-dashed border-slate-300 hover:border-rotaract-cranberry hover:bg-slate-50/60 rounded-2xl p-5 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer bg-slate-50/30">
+                                                <div className="w-10 h-10 rounded-2xl bg-rotaract-cranberry/10 text-rotaract-cranberry flex items-center justify-center">
+                                                    <Upload className="w-5 h-5" />
+                                                </div>
+                                                <div className="text-center">
+                                                    <span className="text-xs font-bold text-slate-700 block">
+                                                        Click to browse or drop an updated file
+                                                    </span>
+                                                    <span className="text-[11px] text-slate-400 block mt-0.5">
+                                                        Supports PNG, JPG, JPEG, WEBP (Max 5MB)
+                                                    </span>
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        if (e.target.files && e.target.files[0]) {
+                                                            handleQrImageUpload(e.target.files[0]);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                            {qrUploadFileName && (
+                                                <div className="flex items-center justify-between px-3.5 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800">
+                                                    <span className="font-medium truncate">New file selected: <strong>{qrUploadFileName}</strong></span>
+                                                    <span className="text-[10px] bg-emerald-200 px-2 py-0.5 rounded font-bold">Ready</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Step 3: UPI Account & Payment Details */}
+                                    <div className="space-y-4 pt-2 border-t border-slate-100">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+                                            Active Account Details
+                                        </label>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Club UPI ID *
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        placeholder="e.g. vaishnavisrinivasa26-1@okaxis"
+                                                        value={qrConfig.upiId}
+                                                        onChange={(e) => setQrConfig({ ...qrConfig, upiId: e.target.value })}
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                    />
+                                                    {qrConfig.upiId.includes("@") && (
+                                                        <div className="absolute right-3 top-3 text-emerald-600" title="Valid UPI format">
+                                                            <Check className="w-4 h-4" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 mt-1">
+                                                    This ID is copied by students when paying directly from their UPI apps.
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Account Holder / Payee Name *
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    placeholder="e.g. Rotaract Club BMSCE"
+                                                    value={qrConfig.payeeName}
+                                                    onChange={(e) => setQrConfig({ ...qrConfig, payeeName: e.target.value })}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                />
+                                                <p className="text-[10px] text-slate-400 mt-1">
+                                                    Official recipient name shown on UPI payment screens.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Membership Fee Amount (₹) *
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    required
+                                                    min="1"
+                                                    value={qrConfig.amount}
+                                                    onChange={(e) => setQrConfig({ ...qrConfig, amount: Number(e.target.value) || 0 })}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-rotaract-navy focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                />
+                                                <p className="text-[10px] text-slate-400 mt-1">
+                                                    Standard 4-year club membership fee amount.
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Student Guidance Notes
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Scan with any UPI app to pay fee"
+                                                    value={qrConfig.notes || ""}
+                                                    onChange={(e) => setQrConfig({ ...qrConfig, notes: e.target.value })}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                />
+                                                <p className="text-[10px] text-slate-400 mt-1">
+                                                    Helpful note shown directly underneath the payment card.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Metadata summary */}
+                                    {qrConfig.lastUpdated && (
+                                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 flex items-center justify-between">
+                                            <span className="flex items-center gap-1.5">
+                                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                                Last modified: <strong>{qrConfig.lastUpdated}</strong>
+                                            </span>
+                                            {qrConfig.updatedBy && (
+                                                <span className="text-slate-400">by {qrConfig.updatedBy}</span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Submit Action */}
+                                    <div className="pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={isSavingQr}
+                                            className="w-full py-3.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 disabled:bg-slate-300 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                                        >
+                                            {isSavingQr ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    <span>Saving & Applying New QR Code...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                    <span>Save & Publish Live QR Code</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* RIGHT COLUMN: LIVE INTERACTIVE PREVIEW (5 cols) */}
+                            <div className="lg:col-span-5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                        <Eye className="w-4 h-4 text-rotaract-navy" />
+                                        <span>Public Portal Live Preview</span>
+                                    </h3>
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        Matches /join-the-club
+                                    </span>
+                                </div>
+
+                                {/* Simulated Join-the-club Payment Card */}
+                                <div className="bg-slate-50 rounded-3xl p-6 sm:p-7 border-2 border-slate-200 shadow-md space-y-5">
+                                    <div className="text-center max-w-sm mx-auto space-y-1.5">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            <span>Official Rotaract BMSCE Payment QR</span>
+                                        </span>
+                                        <h4 className="text-xl font-extrabold font-heading text-rotaract-navy">
+                                            Scan & Pay ₹{qrConfig.amount}
+                                        </h4>
+                                        <p className="text-xs text-slate-500 font-light">
+                                            {qrConfig.notes || "Scan with Google Pay, PhonePe, Paytm, BHIM, or any UPI app."}
+                                        </p>
+                                    </div>
+
+                                    {/* QR Code Container */}
+                                    <div className="flex flex-col items-center justify-center space-y-3">
+                                        <div className="w-60 sm:w-64 max-w-full bg-white p-3 rounded-3xl shadow-sm border border-slate-200 flex items-center justify-center transition-transform hover:scale-[1.02]">
+                                            <img
+                                                src={livePreviewImageUrl}
+                                                alt="Rotaract BMSCE UPI QR Code"
+                                                className="w-full h-auto object-contain rounded-2xl max-h-64"
+                                                onError={(e) => {
+                                                    e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(previewDeepLink)}`;
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* UPI ID Pill & Copy Button */}
+                                        <div className="flex items-center justify-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-sm max-w-full">
+                                            <span className="text-[11px] text-slate-500 font-medium">Club UPI ID:</span>
+                                            <span className="text-xs font-mono font-bold text-slate-800 truncate max-w-[180px]">
+                                                {qrConfig.upiId}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={copyAdminUpi}
+                                                className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors ml-1 cursor-pointer"
+                                                title="Copy UPI ID"
+                                            >
+                                                {isCopiedAdminUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                            </button>
+                                        </div>
+
+                                        {/* Payee Name subtitle */}
+                                        <div className="text-[11px] text-slate-500 text-center">
+                                            Verified Payee: <strong>{qrConfig.payeeName}</strong>
+                                        </div>
+                                    </div>
+
+                                    {/* Action buttons on preview */}
+                                    <div className="pt-2 border-t border-slate-200/80 grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={downloadCurrentQr}
+                                            className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-200 transition-colors cursor-pointer"
+                                        >
+                                            <Download className="w-3.5 h-3.5 text-rotaract-navy" />
+                                            <span>Download QR</span>
+                                        </button>
+                                        <a
+                                            href="/join-the-club"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3 py-2 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5 text-rotaract-gold" />
+                                            <span>Test Live Page</span>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                {/* Helpful Instruction Note */}
+                                <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-1">
+                                    <p className="font-bold flex items-center gap-1.5">
+                                        <ShieldCheck className="w-4 h-4 text-amber-700" />
+                                        Admin Security & Verification
+                                    </p>
+                                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                                        Whenever you switch QR code images or update the UPI ID, verify by scanning this preview with your own phone&apos;s UPI application to ensure payments route into the club&apos;s correct bank account.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* MODAL 1: ADD NEW QR CODE TO LIBRARY */}
+                        {showAddQrModal && (
+                            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-5 my-8"
+                                >
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-9 h-9 rounded-xl bg-rotaract-navy/10 text-rotaract-navy flex items-center justify-center">
+                                                <Upload className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-bold font-heading text-rotaract-navy">
+                                                    Add New QR Code to Library
+                                                </h3>
+                                                <p className="text-xs text-slate-500">
+                                                    Upload a new QR image to select and show on the Join Us page.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddQrModal(false)}
+                                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    </div>
+
+                                    <form onSubmit={handleAddNewQr} className="space-y-4">
+                                        {/* Image Upload Dropzone */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                                QR Code Image *
+                                            </label>
+                                            <label className="border-2 border-dashed border-slate-300 hover:border-rotaract-cranberry hover:bg-slate-50 rounded-2xl p-5 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer bg-slate-50/50">
+                                                {newQrForm.imageData ? (
+                                                    <div className="flex items-center gap-3">
+                                                        <img
+                                                            src={newQrForm.imageData}
+                                                            alt="Uploaded QR Preview"
+                                                            className="w-16 h-16 object-contain rounded-xl border border-slate-200 bg-white"
+                                                        />
+                                                        <div className="text-left text-xs">
+                                                            <span className="font-bold text-slate-800 block truncate max-w-[200px]">
+                                                                {newQrForm.fileName}
+                                                            </span>
+                                                            <span className="text-emerald-600 font-semibold">Image loaded successfully</span>
+                                                            <span className="text-[10px] text-slate-400 block">Click to choose another</span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="w-10 h-10 rounded-xl bg-rotaract-cranberry/10 text-rotaract-cranberry flex items-center justify-center">
+                                                            <Upload className="w-5 h-5" />
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <span className="text-xs font-bold text-slate-700 block">
+                                                                Click to browse or drop QR image
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-400">
+                                                                PNG, JPG, JPEG, WEBP (Max 5MB)
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        if (e.target.files && e.target.files[0]) {
+                                                            handleModalImageUpload(e.target.files[0]);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
+
+                                        {/* QR Title & Label */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                QR Code Title / Label *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                required
+                                                placeholder="e.g. Canara Bank QR, Treasurer Google Pay, Fest QR"
+                                                value={newQrForm.title}
+                                                onChange={(e) => setNewQrForm({ ...newQrForm, title: e.target.value })}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {/* UPI ID */}
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Associated UPI ID *
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    placeholder="e.g. rotaractbmsce@okaxis"
+                                                    value={newQrForm.upiId}
+                                                    onChange={(e) => setNewQrForm({ ...newQrForm, upiId: e.target.value })}
+                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                />
+                                            </div>
+
+                                            {/* Bank / Account Name */}
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                    Bank / Account
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. Axis Bank, HDFC, SBI"
+                                                    value={newQrForm.bank}
+                                                    onChange={(e) => setNewQrForm({ ...newQrForm, bank: e.target.value })}
+                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Payee Name */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                                Account Holder / Payee Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Rotaract Club BMSCE"
+                                                value={newQrForm.payeeName}
+                                                onChange={(e) => setNewQrForm({ ...newQrForm, payeeName: e.target.value })}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                            />
+                                        </div>
+
+                                        {/* Immediate Activation Checkbox */}
+                                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2.5">
+                                            <input
+                                                type="checkbox"
+                                                id="selectImmediately"
+                                                checked={newQrForm.selectImmediately}
+                                                onChange={(e) => setNewQrForm({ ...newQrForm, selectImmediately: e.target.checked })}
+                                                className="w-4 h-4 rounded text-rotaract-cranberry focus:ring-rotaract-cranberry cursor-pointer"
+                                            />
+                                            <label htmlFor="selectImmediately" className="text-xs font-medium text-slate-700 cursor-pointer">
+                                                Immediately make this QR code active on the live Join Us page
+                                            </label>
+                                        </div>
+
+                                        {/* Submit buttons */}
+                                        <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAddQrModal(false)}
+                                                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold cursor-pointer"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={isAddingQr}
+                                                className="px-5 py-2.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                                            >
+                                                {isAddingQr ? (
+                                                    <>
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        <span>Uploading...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Check className="w-4 h-4" />
+                                                        <span>Add to Library</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </motion.div>
+                            </div>
+                        )}
+
+                        {/* MODAL 2: ENLARGED LIGHTBOX PREVIEW */}
+                        {previewQrModal && (
+                            <div
+                                className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4"
+                                onClick={() => setPreviewQrModal(null)}
+                            >
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-center relative"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewQrModal(null)}
+                                        className="absolute right-4 top-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+
+                                    <div className="space-y-1 pt-2">
+                                        <span className="text-[10px] uppercase font-bold tracking-wider text-rotaract-cranberry bg-rotaract-cranberry/10 px-2.5 py-0.5 rounded-full">
+                                            {previewQrModal.badge || previewQrModal.bank || "QR Code Image"}
+                                        </span>
+                                        <h3 className="text-base font-bold font-heading text-rotaract-navy">
+                                            {previewQrModal.title}
+                                        </h3>
+                                    </div>
+
+                                    <div className="w-64 h-64 mx-auto bg-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center justify-center shadow-inner">
+                                        <img
+                                            src={previewQrModal.qrImageUrl}
+                                            alt={previewQrModal.title}
+                                            className="w-full h-full object-contain rounded-xl"
+                                        />
+                                    </div>
+
+                                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs font-mono text-slate-800">
+                                        <span>{previewQrModal.upiId}</span>
+                                    </div>
+
+                                    <div className="pt-2 flex flex-col gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                handleSelectQrCard(previewQrModal);
+                                                setPreviewQrModal(null);
+                                            }}
+                                            className="w-full py-2.5 rounded-xl bg-rotaract-navy hover:bg-rotaract-cranberry text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                        >
+                                            <Check className="w-4 h-4" />
+                                            <span>Set as Active QR on Join Us Page</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPreviewQrModal(null)}
+                                            className="w-full py-2 rounded-xl text-slate-500 hover:bg-slate-100 text-xs font-medium cursor-pointer"
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
                     </div>
                 )}
 
