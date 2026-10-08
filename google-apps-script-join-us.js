@@ -15,7 +15,7 @@
  * 3. Drive Screenshot Storage: Decodes and stores the UPI payment screenshot in Google Drive
  *    under "Rotaract BMSCE Payment Screenshots", tagged with the student's name and USN.
  * 
- * ALL 16 RECORDED FIELDS:
+ * ALL RECORDED FIELDS:
  * 1.  Timestamp
  * 2.  Receipt ID (e.g. RTR-2026-RM-XXXXXX)
  * 3.  Full Name
@@ -32,6 +32,9 @@
  * 14. Payee Name (UPI Account Holder Name from screenshot)
  * 15. UPI Transaction Ref / UTR
  * 16. Uploaded Screenshot (Google Drive link)
+ * 17. Payment QR Used (Vaishnavi QR1, Vaishnavi QR2, Sharanu QR, Himashree QR, etc.)
+ * 18. Remarks / Notes (Admin notes, cash notes, discounts, comments)
+ * 19. Registration Desk / Device (Device & desk identification)
  * =========================================================================================
  */
 
@@ -183,6 +186,55 @@ var FIELD_DEFINITIONS = [
     aliases: ["uploaded screenshot", "screenshot", "payment screenshot", "drive link", "screenshot url", "proof", "drive url", "image"],
     getValue: function(d, driveUrl) {
       return driveUrl || "No screenshot attached";
+    }
+  },
+  {
+    id: "qrUsed",
+    header: "Payment QR Used",
+    aliases: [
+      "payment qr used",
+      "qr used",
+      "payment qr",
+      "which qr",
+      "qr code",
+      "selected qr",
+      "qr option",
+      "qr"
+    ],
+    getValue: function(d) {
+      return (d.qrUsed || d.paymentQr || d.qrCode || d.qrOption || "N/A").trim();
+    }
+  },
+  {
+    id: "remarks",
+    header: "Remarks / Notes",
+    aliases: [
+      "remarks",
+      "notes",
+      "remark",
+      "admin remarks",
+      "admin notes",
+      "comments",
+      "special remarks",
+      "note"
+    ],
+    getValue: function(d) {
+      return (d.remarks || d.notes || "").trim();
+    }
+  },
+  {
+    id: "desk",
+    header: "Registration Desk / Device",
+    aliases: [
+      "registration desk",
+      "desk",
+      "device",
+      "added by",
+      "registered by",
+      "admin desk"
+    ],
+    getValue: function(d) {
+      return (d.desk || d.device || d.addedBy || "Online Self-Registration").trim();
     }
   }
 ];

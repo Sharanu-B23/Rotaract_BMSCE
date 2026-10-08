@@ -16,12 +16,18 @@ export async function POST(request: Request) {
             );
         }
 
+        const payload = {
+            ...body,
+            qrUsed: body.qrUsed || "Vaishnavi QR1",
+            remarks: body.remarks || "",
+        };
+
         const response = await fetch(sheetUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify(payload),
             redirect: "follow",
         });
 
