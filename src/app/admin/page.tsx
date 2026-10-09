@@ -82,7 +82,7 @@ export default function AdminPortalPage() {
         phone: "",
         bloodGroup: "Prefer not to say",
         membershipType: "RI - Rotary International membership",
-        amount: "800",
+        amount: "600",
         payeeName: "",
         qrUsed: "Vaishnavi QR1",
         remarks: "",
@@ -1201,12 +1201,12 @@ export default function AdminPortalPage() {
                                                 Amount Paid (₹) *
                                             </label>
                                             {memberForm.amount !== "" && !isNaN(Number(memberForm.amount)) && (
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${Number(memberForm.amount) < (memberForm.membershipType.startsWith("RI") ? 800 : 320)
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${Number(memberForm.amount) < (memberForm.membershipType.startsWith("RI") ? 600 : 320)
                                                     ? "bg-amber-100 text-amber-700"
                                                     : "bg-emerald-100 text-emerald-700"
                                                     }`}>
-                                                    {Number(memberForm.amount) < (memberForm.membershipType.startsWith("RI") ? 800 : 320)
-                                                        ? `Discount: ₹${(memberForm.membershipType.startsWith("RI") ? 800 : 320) - Number(memberForm.amount)} off`
+                                                    {Number(memberForm.amount) < (memberForm.membershipType.startsWith("RI") ? 600 : 320)
+                                                        ? `Discount: ₹${(memberForm.membershipType.startsWith("RI") ? 600 : 320) - Number(memberForm.amount)} off`
                                                         : "Standard Fee"}
                                                 </span>
                                             )}
@@ -1220,7 +1220,7 @@ export default function AdminPortalPage() {
                                                 required
                                                 min="0"
                                                 step="1"
-                                                placeholder="e.g. 800, 320, 250"
+                                                placeholder="e.g. 600, 320, 250"
                                                 value={memberForm.amount}
                                                 onChange={(e) => setMemberForm({ ...memberForm, amount: e.target.value })}
                                                 className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
@@ -1331,7 +1331,7 @@ export default function AdminPortalPage() {
                                                 setMemberForm({ ...memberForm, qrUsed: val });
                                                 try {
                                                     localStorage.setItem("rotaract_admin_selected_qr", val);
-                                                } catch {}
+                                                } catch { }
                                             }}
                                             className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white text-slate-800"
                                         >
