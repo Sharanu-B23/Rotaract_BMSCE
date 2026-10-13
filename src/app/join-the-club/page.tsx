@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import paymentSettingsRaw from "@/data/paymentSettings.json";
 import {
     Sparkles,
     Heart,
@@ -12,463 +11,52 @@ import {
     ArrowRight,
     HelpCircle,
     ChevronDown,
-    Loader2,
     Handshake,
     BookOpen,
     GraduationCap,
-    QrCode,
     ShieldCheck,
-    Copy,
-    Check,
     Mail,
-    AlertCircle,
-    UploadCloud,
-    FileImage,
-    Trash2,
-    Smartphone,
-    UserCheck
+    Bell,
+    ExternalLink,
+    Users,
+    Calendar,
+    Clock,
+    Flame
 } from "lucide-react";
-import { FaInstagram as Instagram } from "react-icons/fa";
-import { SiGooglepay, SiPhonepe, SiPaytm } from "react-icons/si";
-
-interface MemberFormState {
-    fullName: string;
-    usn: string;
-    yearOfStudy: string;
-    bloodGroup: string;
-    personalEmail: string;
-    collegeEmail: string;
-    phone: string;
-    payeeName: string;
-    transactionId: string;
-    whyJoin: string;
-    priorExperience: string;
-}
-
-interface ReceiptData {
-    receiptId: string;
-    fullName: string;
-    usn: string;
-    yearOfStudy: string;
-    bloodGroup?: string;
-    personalEmail: string;
-    collegeEmail: string;
-    phone: string;
-    payeeName: string;
-    membershipType: string;
-    amount: number;
-    transactionId: string;
-    screenshotUrl?: string;
-    date: string;
-}
-
-const INITIAL_FORM: MemberFormState = {
-    fullName: "",
-    usn: "",
-    yearOfStudy: "1st Year",
-    bloodGroup: "",
-    personalEmail: "",
-    collegeEmail: "",
-    phone: "",
-    payeeName: "",
-    transactionId: "",
-    whyJoin: "",
-    priorExperience: "",
-};
-
-const YEARS_OF_STUDY = [
-    "1st Year",
-    "2nd Year",
-    "3rd Year",
-    "4th Year",
-    "Postgraduate / Other"
-];
-
-const BLOOD_GROUPS = [
-    "A+",
-    "A-",
-    "B+",
-    "B-",
-    "O+",
-    "O-",
-    "AB+",
-    "AB-",
-    "Unknown / Prefer not to say"
-];
-
-const CLUB_MEMBERSHIP = {
-    code: "RM",
-    name: "Club Membership (RM)",
-    shortTag: "official rotaract BMSCE membership (RM)",
-    fee: 320,
-    duration: "4 Years",
-    description: "Official 4-year Rotaract membership for BMSCE students. Grants complete access to campus drives, committees, leadership positions, verified volunteer hours, and flagship events throughout your 4-year tenure.",
-    perks: [
-        "Full access to all BMSCE campus projects, workshops, speaker sessions & fests",
-        "Official club participation certificates & verified volunteering credit hours",
-        "Direct mentorship from senior club board & BMSCE alumni network",
-        "Eligibility for committee leadership, project heads & board positions",
-        "Exclusive campus fellowship, industrial visits & leadership training",
-        "Official Rotaract BMSCE Welcome Kit & induction credentials"
-    ]
-};
+import { FaInstagram as Instagram, FaLinkedin as Linkedin } from "react-icons/fa";
 
 const FAQS = [
     {
-        question: "What does the Club Membership (RM - ₹320 for 4 years) include?",
-        answer: "Club Membership (RM - ₹320 for 4 years) grants full official Rotaract BMSCE membership across your 4-year tenure, including access to all campus initiatives, leadership development workshops, eligibility to chair event committees, official volunteering certificates with verified hours, and mentorship from senior club leaders and alumni."
+        question: "Are membership registrations currently open?",
+        answer: "No, official membership registrations for the current year are now closed. All further updates regarding the next recruitment cycle and open calls will be announced on our official social media channels."
     },
     {
-        question: "How do I pay the ₹320 membership fee and verify my registration?",
-        answer: "Simply scan the UPI QR code on this page with any UPI app (Google Pay, PhonePe, Paytm, BHIM) to pay the ₹320 membership fee (covers 4 years). Take a screenshot of the completed payment receipt and upload it directly in the form below the QR code. Your screenshot is saved in the club's Google Drive under your name for fast administrative verification."
+        question: "Where will further updates be provided?",
+        answer: "Further updates will be shared through our official social media platforms, primarily our Instagram (@rotaract_bmsce) and LinkedIn. Follow our pages to stay notified about upcoming recruitment drives, open volunteering opportunities, and campus announcements."
     },
     {
-        question: "Where will my payment screenshot be saved?",
-        answer: "Your payment screenshot is automatically uploaded to our dedicated Rotaract BMSCE Google Drive folder, formatted with your full name and USN (e.g. 'Rahul Sharma (1BM24CS001) - Payment Screenshot'), ensuring zero mix-ups and instant verification."
+        question: "Can non-members attend Rotaract BMSCE events and initiatives?",
+        answer: "Yes! Many of our signature speaker sessions, awareness drives, cultural celebrations, and campus fests are open to all students of BMS College of Engineering. You can check out our Upcoming Events page for passes and details."
     },
     {
-        question: "Who is eligible to join the Rotaract Club of BMSCE?",
-        answer: "Any currently enrolled student of BMS College of Engineering (undergraduate or postgraduate) across any branch and year is warmly welcome to register."
+        question: "Who is eligible to join when registrations reopen?",
+        answer: "Any currently enrolled student of BMS College of Engineering (undergraduate or postgraduate) across all branches and academic years is eligible to apply during our open membership intake periods."
     },
     {
-        question: "Do I need any previous volunteering or leadership experience?",
-        answer: "No prior experience is necessary! We value passion, curiosity, and willingness to contribute. Our senior board members and alumni provide hands-on mentorship from day one."
+        question: "Do I need prior volunteering or leadership experience?",
+        answer: "No prior experience is necessary! We value enthusiasm, teamwork, and willingness to contribute. Our senior board and alumni provide mentorship and support from day one."
     },
     {
-        question: "What happens after I submit my membership form and screenshot?",
-        answer: "Once submitted, your details are recorded in our official member database. You will be notified about the updates soon through mail and added to a WhatsApp group within 2 weeks!"
+        question: "How can I contact the Rotaract BMSCE board in the meantime?",
+        answer: "You can reach out to us directly via our Contact Us page, send an email to rotaract@bmsce.ac.in, or drop a message on Instagram DM (@rotaract_bmsce). We would love to hear from you!"
     }
 ];
 
 export default function JoinTheClubPage() {
-    const [formData, setFormData] = useState<MemberFormState>(INITIAL_FORM);
-    const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-    const [screenshotBase64, setScreenshotBase64] = useState<string>("");
-    const [screenshotPreview, setScreenshotPreview] = useState<string>("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false);
-    const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
-    const [copiedUpi, setCopiedUpi] = useState(false);
-    const [formValidationError, setFormValidationError] = useState("");
     const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-    const [isDragOver, setIsDragOver] = useState(false);
-    const [qrImageError, setQrImageError] = useState(false);
-
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    // Dynamic Payment QR & UPI configuration managed via Admin Portal
-    const [paymentConfig, setPaymentConfig] = useState<{
-        qrImageUrl: string;
-        upiId: string;
-        payeeName: string;
-        amount: number;
-        qrMode: "custom_image" | "dynamic_upi" | "default";
-        selectedQrId?: string;
-        lastUpdated?: string;
-    }>({
-        qrImageUrl: paymentSettingsRaw.qrImageUrl || process.env.NEXT_PUBLIC_PAYMENT_QR_IMAGE || "/images/payment-qr.jpg",
-        upiId: paymentSettingsRaw.upiId || process.env.NEXT_PUBLIC_UPI_ID || "vaishnavisrinivasa26-1@okaxis",
-        payeeName: paymentSettingsRaw.payeeName || "Rotaract Club BMSCE",
-        amount: Number(paymentSettingsRaw.amount) || CLUB_MEMBERSHIP.fee,
-        qrMode: ((paymentSettingsRaw as any).qrMode as "custom_image" | "dynamic_upi" | "default") || "custom_image",
-        selectedQrId: (paymentSettingsRaw as any).selectedQrId || "qr-axis-bank",
-        lastUpdated: (paymentSettingsRaw as any).lastUpdated || "",
-    });
-
-    const clubUpiId = paymentConfig.upiId;
-    const paymentQrImage = paymentConfig.qrImageUrl;
-    const payableAmount = paymentConfig.amount;
-
-    useEffect(() => {
-        setQrImageError(false);
-    }, [paymentConfig.qrImageUrl, paymentConfig.selectedQrId, paymentConfig.upiId]);
-
-    // Load active settings from localStorage and sync with server API
-    useEffect(() => {
-        const updateFromStorage = () => {
-            try {
-                const stored = localStorage.getItem("rotaract_custom_qr_settings");
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    setPaymentConfig((prev) => ({ ...prev, ...parsed }));
-                }
-            } catch {
-                // ignore
-            }
-        };
-
-        updateFromStorage();
-
-        // Fetch fresh settings from server (bypassing static and browser caches)
-        fetch(`/api/admin/qr-settings?t=${Date.now()}`, {
-            cache: "no-store",
-            headers: {
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                Pragma: "no-cache",
-            },
-        })
-            .then((res) => res.json())
-            .then((data) => {
-                if (data.success && data.settings) {
-                    setPaymentConfig((prev) => ({ ...prev, ...data.settings }));
-                    try {
-                        localStorage.setItem("rotaract_custom_qr_settings", JSON.stringify(data.settings));
-                    } catch {}
-                }
-            })
-            .catch((err) => {
-                console.warn("Could not fetch fresh QR settings from server:", err);
-            });
-
-        // Listen for storage changes across tabs & instant custom dispatch
-        window.addEventListener("storage", updateFromStorage);
-        const handleCustomUpdate = (e: any) => {
-            if (e.detail) {
-                setPaymentConfig((prev) => ({ ...prev, ...e.detail }));
-            }
-        };
-        window.addEventListener("rotaract_qr_updated", handleCustomUpdate);
-
-        return () => {
-            window.removeEventListener("storage", updateFromStorage);
-            window.removeEventListener("rotaract_qr_updated", handleCustomUpdate);
-        };
-    }, []);
-
-    // Deep link for UPI mobile applications
-    const upiDeepLink = `upi://pay?pa=${clubUpiId}&pn=${encodeURIComponent(paymentConfig.payeeName || "Rotaract Club BMSCE")}&am=${payableAmount}&cu=INR&tn=Rotaract+RM+Fee+${formData.usn ? formData.usn.toUpperCase() : "BMSCE"}`;
-
-    const handleInputChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-    ) => {
-        const { name, value } = e.target;
-        if (name === "phone") {
-            // Only allow numbers and cap at 10 digits
-            const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
-            setFormData((prev) => ({ ...prev, [name]: digitsOnly }));
-        } else {
-            setFormData((prev) => ({ ...prev, [name]: value }));
-        }
-        if (formValidationError) setFormValidationError("");
-    };
-
-    // Handle File selection for payment screenshot
-    const processScreenshotFile = (file: File) => {
-        if (!file) return;
-
-        // Verify type (image or pdf)
-        if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
-            setFormValidationError("Please upload a valid image file (PNG, JPG, JPEG, WEBP) of your payment screenshot.");
-            return;
-        }
-
-        // Limit size to 10MB
-        if (file.size > 10 * 1024 * 1024) {
-            setFormValidationError("Screenshot file size exceeds 10MB. Please upload a smaller image.");
-            return;
-        }
-
-        setFormValidationError("");
-        setScreenshotFile(file);
-
-        // Generate preview & Base64
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const result = e.target?.result as string;
-            setScreenshotBase64(result);
-            setScreenshotPreview(result);
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            processScreenshotFile(e.target.files[0]);
-        }
-    };
-
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        setIsDragOver(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            processScreenshotFile(e.dataTransfer.files[0]);
-        }
-    };
-
-    const handleRemoveScreenshot = () => {
-        setScreenshotFile(null);
-        setScreenshotBase64("");
-        setScreenshotPreview("");
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
-    };
-
-    const copyUpiToClipboard = () => {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(clubUpiId);
-            setCopiedUpi(true);
-            setTimeout(() => setCopiedUpi(false), 2500);
-        }
-    };
 
     const toggleFaq = (index: number) => {
         setOpenFaqIndex(openFaqIndex === index ? null : index);
-    };
-
-    // Form submission handler
-    const handleSubmitRegistration = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setFormValidationError("");
-
-        // Field Validation
-        if (!formData.fullName.trim()) {
-            setFormValidationError("Please enter your Full Name.");
-            return;
-        }
-        if (!formData.usn.trim()) {
-            setFormValidationError("Please enter your BMSCE USN.");
-            return;
-        }
-        if (!formData.personalEmail.trim() || !formData.personalEmail.includes("@")) {
-            setFormValidationError("Please enter a valid Personal Email Address.");
-            return;
-        }
-        if (!formData.collegeEmail.trim() || !formData.collegeEmail.includes("@")) {
-            setFormValidationError("Please enter your College Email Address (e.g. name@bmsce.ac.in).");
-            return;
-        }
-        const cleanPhone = formData.phone.trim().replace(/\D/g, "");
-        if (!cleanPhone || cleanPhone.length !== 10) {
-            setFormValidationError("Please enter a valid 10-digit WhatsApp / Phone Number.");
-            const phoneEl = document.getElementById("phone-input");
-            if (phoneEl) phoneEl.scrollIntoView({ behavior: "smooth" });
-            return;
-        }
-        if (!screenshotBase64) {
-            setFormValidationError("Please upload the payment screenshot of your ₹320 UPI transfer.");
-            const uploadEl = document.getElementById("screenshot-upload-section");
-            if (uploadEl) uploadEl.scrollIntoView({ behavior: "smooth" });
-            return;
-        }
-        if (!formData.payeeName.trim()) {
-            setFormValidationError("Please enter the Payee Name (mandatory account holder's name shown on the UPI payment screenshot).");
-            const payeeEl = document.getElementById("payee-name-input");
-            if (payeeEl) {
-                payeeEl.focus();
-                payeeEl.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-            return;
-        }
-
-        setIsSubmitting(true);
-
-        const generatedReceiptId = `RTR-2026-RM-${Math.floor(100000 + Math.random() * 900000)}`;
-        const timestamp = new Date().toISOString();
-        const studentCleanName = `${formData.fullName}_${formData.usn.toUpperCase()}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-        const formattedFileName = `${studentCleanName}_PaymentScreenshot.${screenshotFile?.name.split(".").pop() || "png"}`;
-
-        const payload = {
-            receiptId: generatedReceiptId,
-            fullName: formData.fullName.trim(),
-            usn: formData.usn.trim().toUpperCase(),
-            yearOfStudy: formData.yearOfStudy,
-            bloodGroup: formData.bloodGroup || "Not Specified",
-            personalEmail: formData.personalEmail.trim(),
-            collegeEmail: formData.collegeEmail.trim(),
-            email: formData.collegeEmail.trim() || formData.personalEmail.trim(),
-            phone: formData.phone.trim(),
-            contactWhatsApp: formData.phone.trim(),
-            payeeName: formData.payeeName.trim(),
-            membershipType: CLUB_MEMBERSHIP.name,
-            amount: payableAmount,
-            transactionId: formData.transactionId.trim() || "UPI-Screenshot-Verified",
-            whyJoin: formData.whyJoin.trim(),
-            priorExperience: formData.priorExperience.trim(),
-            registeredAt: timestamp,
-            timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
-            screenshotBase64: screenshotBase64,
-            screenshotFileName: formattedFileName,
-            source: "Website Join the Club Page"
-        };
-
-        const receiptRecord: ReceiptData = {
-            receiptId: generatedReceiptId,
-            fullName: formData.fullName.trim(),
-            usn: formData.usn.trim().toUpperCase(),
-            yearOfStudy: formData.yearOfStudy,
-            bloodGroup: formData.bloodGroup || "Not Specified",
-            personalEmail: formData.personalEmail.trim(),
-            collegeEmail: formData.collegeEmail.trim(),
-            phone: formData.phone.trim(),
-            payeeName: formData.payeeName.trim(),
-            membershipType: CLUB_MEMBERSHIP.name,
-            amount: payableAmount,
-            transactionId: formData.transactionId.trim() || "UPI-Screenshot-Submitted",
-            screenshotUrl: screenshotPreview,
-            date: new Date().toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit"
-            })
-        };
-
-        try {
-            // 1. Save locally for redundancy & admin view
-            const existingRegistrations = JSON.parse(
-                localStorage.getItem("rotaract_member_applications") || "[]"
-            );
-            existingRegistrations.push(payload);
-            localStorage.setItem(
-                "rotaract_member_applications",
-                JSON.stringify(existingRegistrations)
-            );
-
-            // 2. Submit via Next.js internal API route (/api/join) which forwards to the dedicated Google Sheet
-            try {
-                const apiRes = await fetch("/api/join", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-                if (!apiRes.ok) {
-                    throw new Error(`API responded with status ${apiRes.status}`);
-                }
-                const resData = await apiRes.json();
-                if (resData.driveFileUrl) {
-                    receiptRecord.screenshotUrl = resData.driveFileUrl;
-                }
-            } catch (apiErr) {
-                console.warn("API route failed, trying direct Google Sheet script webhook fallback:", apiErr);
-
-                // Direct Google Sheet Webhook Fallback if /api/join is unavailable
-                const directScriptUrl =
-                    process.env.NEXT_PUBLIC_JOIN_SHEET_URL;
-
-                if (directScriptUrl) {
-                    await fetch(directScriptUrl, {
-                        method: "POST",
-                        mode: "no-cors",
-                        headers: { "Content-Type": "text/plain" },
-                        body: JSON.stringify(payload),
-                    });
-                }
-            }
-
-            setReceiptData(receiptRecord);
-            setIsSubmitting(false);
-            setIsSubmitted(true);
-            window.scrollTo({ top: 400, behavior: "smooth" });
-        } catch (err) {
-            console.error("Registration transmission error:", err);
-            // Even if network fails, local receipt is displayed
-            setReceiptData(receiptRecord);
-            setIsSubmitting(false);
-            setIsSubmitted(true);
-            window.scrollTo({ top: 400, behavior: "smooth" });
-        }
     };
 
     return (
@@ -480,13 +68,14 @@ export default function JoinTheClubPage() {
                 <div className="absolute -bottom-10 right-10 w-80 h-80 bg-rotaract-gold/15 rounded-full blur-3xl pointer-events-none" />
 
                 <div className="relative z-10 max-w-5xl mx-auto text-center space-y-6">
+                    {/* Status Pill Badge */}
                     <motion.div
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-xs font-semibold text-rotaract-gold tracking-wide backdrop-blur-md shadow-sm"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-500/15 border border-rose-400/30 text-xs font-bold text-rose-300 tracking-wide backdrop-blur-md shadow-sm"
                     >
-                        <Sparkles className="w-4 h-4 text-rotaract-gold" />
-                        <span>Club Membership Intake 2026–27 Now Open</span>
+                        <Clock className="w-4 h-4 text-rose-400" />
+                        <span>Membership Registrations Closed for Current Year</span>
                     </motion.div>
 
                     <motion.h1
@@ -507,13 +96,164 @@ export default function JoinTheClubPage() {
                         transition={{ delay: 0.2 }}
                         className="max-w-3xl mx-auto text-slate-300 text-sm md:text-lg font-light leading-relaxed"
                     >
-                        Become an official member of the Rotaract Club of BMSCE (RI District 3191).
+                        Official Membership Intake of the Rotaract Club of BMSCE (RI District 3191).
+                        Registrations for the current year are officially closed. Further updates will be shared through our official social media platforms.
                     </motion.p>
                 </div>
             </section>
 
             {/* ================= MAIN CONTAINER ================= */}
             <main className="max-w-7xl mx-auto px-6 pt-16 space-y-20">
+
+                {/* ================= REGISTRATIONS CLOSED SHOWCASE NOTICE ================= */}
+                <section id="registrations-closed" className="scroll-mt-28">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="max-w-4xl mx-auto bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden"
+                    >
+                        {/* Header Banner */}
+                        <div className="bg-gradient-to-r from-rotaract-navy via-rotaract-dark to-rotaract-cranberry text-white p-8 md:p-10 relative overflow-hidden">
+                            <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-64 h-64 bg-rotaract-gold/10 rounded-full blur-2xl pointer-events-none" />
+
+                            <div className="relative z-10 space-y-3">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-rotaract-gold text-xs font-semibold">
+                                    <Bell className="w-3.5 h-3.5" />
+                                    <span>Official Club Notice</span>
+                                </div>
+                                <h2 className="text-2xl md:text-4xl font-extrabold font-heading">
+                                    Registrations for the Current Year are Closed
+                                </h2>
+                                <p className="text-slate-300 text-xs md:text-base font-light max-w-2xl leading-relaxed">
+                                    Thank you to everyone who registered and showed tremendous enthusiasm to be part of Rotaract BMSCE! Membership registrations for the current tenure have officially concluded.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Content Body */}
+                        <div className="p-8 md:p-12 space-y-10">
+
+                            {/* Prominent Social Media Updates Callout */}
+                            <div className="bg-gradient-to-br from-slate-50 via-rose-50/30 to-amber-50/40 p-6 md:p-8 rounded-2xl border border-slate-200/80 space-y-4">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-rotaract-cranberry/10 text-rotaract-cranberry flex items-center justify-center flex-shrink-0 shadow-sm">
+                                        <Sparkles className="w-6 h-6" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <h3 className="text-lg md:text-xl font-extrabold font-heading text-rotaract-navy">
+                                            Further Updates on Social Media
+                                        </h3>
+                                        <p className="text-slate-600 text-xs md:text-sm font-normal leading-relaxed">
+                                            Stay tuned! All announcements regarding the next membership intake, special volunteering calls for upcoming flagship fests, and campus initiatives will be broadcasted on our social media platforms.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Official Social Media Platforms Grid */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                                        Connect With Us For Real-Time Announcements
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-rotaract-cranberry">
+                                        @rotaract_bmsce
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Instagram Card */}
+                                    <a
+                                        href="https://www.instagram.com/rotaract_bmsce/"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group p-5 rounded-2xl border border-slate-200 bg-white hover:border-pink-300 hover:shadow-lg transition-all flex items-start gap-4"
+                                    >
+                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                                            <Instagram className="w-6 h-6" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-bold text-sm text-slate-800 group-hover:text-rotaract-cranberry transition-colors font-heading">
+                                                    Instagram
+                                                </h4>
+                                                <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-rotaract-cranberry transition-colors" />
+                                            </div>
+                                            <p className="text-xs font-mono text-rotaract-cranberry font-semibold mt-0.5">
+                                                @rotaract_bmsce
+                                            </p>
+                                            <p className="text-[11px] text-slate-500 font-light mt-1 line-clamp-2">
+                                                Stories, live event recaps, induction updates & announcements.
+                                            </p>
+                                        </div>
+                                    </a>
+
+                                    {/* LinkedIn Card */}
+                                    <a
+                                        href="https://in.linkedin.com/company/rotaract-club-of-bmsce"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group p-5 rounded-2xl border border-slate-200 bg-white hover:border-sky-300 hover:shadow-lg transition-all flex items-start gap-4"
+                                    >
+                                        <div className="w-12 h-12 rounded-xl bg-[#0A66C2] text-white flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                                            <Linkedin className="w-6 h-6" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-bold text-sm text-slate-800 group-hover:text-sky-700 transition-colors font-heading">
+                                                    LinkedIn
+                                                </h4>
+                                                <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-sky-600 transition-colors" />
+                                            </div>
+                                            <p className="text-xs font-mono text-sky-700 font-semibold mt-0.5">
+                                                Rotaract Club of BMSCE
+                                            </p>
+                                            <p className="text-[11px] text-slate-500 font-light mt-1 line-clamp-2">
+                                                Professional networks, Rotary district updates & career impact.
+                                            </p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* What You Can Do in the Meantime */}
+                            <div className="pt-6 border-t border-slate-100 space-y-4">
+                                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                    Explore More While Waiting for Future Openings
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <Link
+                                        href="/events"
+                                        className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-rotaract-navy hover:shadow-md transition-all text-left group"
+                                    >
+                                        <Calendar className="w-5 h-5 text-rotaract-navy mb-2 group-hover:scale-110 transition-transform" />
+                                        <p className="text-xs font-bold text-slate-800">Campus Events</p>
+                                        <p className="text-[11px] text-slate-500 font-light mt-1">Open event passes & registrations</p>
+                                    </Link>
+
+                                    <Link
+                                        href="/showcase"
+                                        className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-rotaract-cranberry hover:shadow-md transition-all text-left group"
+                                    >
+                                        <Flame className="w-5 h-5 text-rotaract-cranberry mb-2 group-hover:scale-110 transition-transform" />
+                                        <p className="text-xs font-bold text-slate-800">Club Showcase</p>
+                                        <p className="text-[11px] text-slate-500 font-light mt-1">Flagship drives & initiatives</p>
+                                    </Link>
+
+                                    <Link
+                                        href="/contact"
+                                        className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-amber-600 hover:shadow-md transition-all text-left group"
+                                    >
+                                        <Mail className="w-5 h-5 text-amber-600 mb-2 group-hover:scale-110 transition-transform" />
+                                        <p className="text-xs font-bold text-slate-800">Contact Us</p>
+                                        <p className="text-[11px] text-slate-500 font-light mt-1">Reach out to the executive team</p>
+                                    </Link>
+                                </div>
+                            </div>
+
+                        </div>
+                    </motion.div>
+                </section>
 
                 {/* ================= WHY JOIN PILLARS ================= */}
                 <section className="space-y-10">
@@ -581,18 +321,18 @@ export default function JoinTheClubPage() {
                     </div>
                 </section>
 
-                {/* ================= MEMBERSHIP JOURNEY STEPS ================= */}
+                {/* ================= INDUCTION CYCLE OVERVIEW ================= */}
                 <section className="space-y-10">
                     <div className="text-center max-w-2xl mx-auto space-y-3">
                         <div className="inline-flex items-center gap-2 text-rotaract-cranberry font-bold text-xs uppercase tracking-wider">
                             <BookOpen className="w-4 h-4" />
-                            <span>Your Induction Path</span>
+                            <span>The Induction Cycle</span>
                         </div>
                         <h2 className="text-3xl md:text-4xl font-extrabold font-heading text-rotaract-navy">
-                            How It Works
+                            How Recruitment Works
                         </h2>
                         <p className="text-slate-600 text-sm md:text-base font-light">
-                            Joining is seamless and instant. Here is what happens from your application to induction.
+                            An overview of what happens during our open membership induction periods.
                         </p>
                     </div>
 
@@ -600,765 +340,42 @@ export default function JoinTheClubPage() {
                         <div className="bg-white p-6 rounded-2xl border border-slate-200 relative shadow-sm">
                             <span className="text-4xl font-extrabold text-slate-200">01</span>
                             <h4 className="text-base font-bold font-heading text-rotaract-navy mt-2">
-                                Fill Student Details
+                                Social Call for Applications
                             </h4>
                             <p className="text-xs text-slate-500 font-light mt-1">
-                                Enter your name, BMSCE USN, year of study, personal email, and college email address.
+                                Membership intake dates are announced through our official Instagram and LinkedIn pages.
                             </p>
                         </div>
 
                         <div className="bg-white p-6 rounded-2xl border border-slate-200 relative shadow-sm">
                             <span className="text-4xl font-extrabold text-slate-200">02</span>
                             <h4 className="text-base font-bold font-heading text-rotaract-navy mt-2">
-                                Scan & Pay ₹320
+                                Online Registration
                             </h4>
                             <p className="text-xs text-slate-500 font-light mt-1">
-                                Scan the official club UPI QR code with any UPI app to pay the ₹320 club membership fee for 4 years.
+                                BMSCE students submit their academic details, interests, and club membership enrollment.
                             </p>
                         </div>
 
                         <div className="bg-white p-6 rounded-2xl border border-slate-200 relative shadow-sm">
                             <span className="text-4xl font-extrabold text-slate-200">03</span>
                             <h4 className="text-base font-bold font-heading text-rotaract-navy mt-2">
-                                Upload Screenshot
+                                Orientation & Welcome Meet
                             </h4>
                             <p className="text-xs text-slate-500 font-light mt-1">
-                                Upload your payment confirmation screenshot. It is automatically saved to Drive under your name.
+                                An energetic campus induction where new recruits meet the board, project heads, and fellow peers.
                             </p>
                         </div>
 
                         <div className="bg-white p-6 rounded-2xl border border-slate-200 relative shadow-sm">
                             <span className="text-4xl font-extrabold text-slate-200">04</span>
                             <h4 className="text-base font-bold font-heading text-rotaract-navy mt-2">
-                                Induction & Kit
+                                Active Projects & Leadership
                             </h4>
                             <p className="text-xs text-slate-500 font-light mt-1">
-                                Receive your digital receipt, get added to the member WhatsApp group, and attend the campus welcome meet!
+                                Lead community drives, participate in fests, and receive verified volunteering credentials.
                             </p>
                         </div>
-                    </div>
-                </section>
-
-                {/* ================= APPLICATION FORM SECTION ================= */}
-                <section id="application-form" className="scroll-mt-28">
-                    <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden">
-
-                        {/* Top Form Header Strip */}
-                        <div className="bg-gradient-to-r from-rotaract-navy via-rotaract-dark to-rotaract-cranberry text-white p-8 md:p-10">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-rotaract-gold text-xs font-semibold mb-3">
-                                <Sparkles className="w-4 h-4" />
-                                <span>Official Membership Registration</span>
-                            </div>
-                            <h2 className="text-2xl md:text-3xl font-extrabold font-heading">
-                                Rotaract Club of BMSCE Membership 2026–27
-                            </h2>
-                            <p className="text-slate-300 text-xs md:text-sm font-light mt-2 max-w-2xl">
-                                Complete your registration below. Club membership is ₹320 for 4 years (official rotaract BMSCE membership). Both personal and college email IDs are required for official club roster registration.
-                            </p>
-                        </div>
-
-                        {/* Form Body or Success Confirmation */}
-                        <div className="p-8 md:p-10">
-                            {!isSubmitted ? (
-                                <form onSubmit={handleSubmitRegistration} className="space-y-8">
-
-                                    {formValidationError && (
-                                        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm rounded-2xl flex items-center gap-3">
-                                            <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600" />
-                                            <span>{formValidationError}</span>
-                                        </div>
-                                    )}
-
-                                    {/* Simple Membership Fee Notice */}
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-slate-700">Club membership :</span>
-                                            <span className="font-extrabold text-rotaract-cranberry text-sm">₹{payableAmount}</span>
-                                            <span className="text-slate-500 font-medium">for 4 years</span>
-                                        </div>
-                                        <span className="text-slate-500 text-[11px] font-medium">official rotaract BMSCE membership (RM)</span>
-                                    </div>
-
-                                    {/* SECTION 1: PERSONAL & COLLEGE INFORMATION */}
-                                    <div className="space-y-4">
-                                        <h3 className="text-sm font-bold uppercase tracking-wider text-rotaract-navy flex items-center gap-2 border-b border-slate-100 pb-2">
-                                            <ShieldCheck className="w-4 h-4 text-rotaract-cranberry" />
-                                            <span>1. Student Details</span>
-                                        </h3>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                                            {/* Full Name */}
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                                                    Full Name *
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="fullName"
-                                                    required
-                                                    placeholder="e.g. Rahul Sharma"
-                                                    value={formData.fullName}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all"
-                                                />
-                                            </div>
-
-                                            {/* BMSCE USN */}
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                                                    BMSCE USN *
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="usn"
-                                                    required
-                                                    placeholder="e.g. 1BM24CS001"
-                                                    value={formData.usn}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all uppercase"
-                                                />
-                                            </div>
-
-                                            {/* Personal Email ID (Mandatory) */}
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                                                    Personal Email ID *
-                                                </label>
-                                                <span className="block text-[11px] text-slate-400 mb-2">
-                                                    Primary email for certificates & communication
-                                                </span>
-                                                <input
-                                                    type="email"
-                                                    name="personalEmail"
-                                                    required
-                                                    placeholder="e.g. rahul.sharma@gmail.com"
-                                                    value={formData.personalEmail}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all"
-                                                />
-                                            </div>
-
-                                            {/* College Email ID (Mandatory) */}
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                                                    College Email ID *
-                                                </label>
-                                                <span className="block text-[11px] text-slate-400 mb-2">
-                                                    Official BMSCE institutional email ID
-                                                </span>
-                                                <input
-                                                    type="email"
-                                                    name="collegeEmail"
-                                                    required
-                                                    placeholder="e.g. rahul.cs24@bmsce.ac.in"
-                                                    value={formData.collegeEmail}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all"
-                                                />
-                                            </div>
-
-                                            {/* Phone / WhatsApp */}
-                                            <div>
-                                                <label htmlFor="phone-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                                                    WhatsApp / Contact Number *
-                                                </label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">
-                                                        +91
-                                                    </span>
-                                                    <input
-                                                        id="phone-input"
-                                                        type="tel"
-                                                        name="phone"
-                                                        required
-                                                        inputMode="numeric"
-                                                        maxLength={10}
-                                                        pattern="[0-9]{10}"
-                                                        placeholder="9876543210"
-                                                        value={formData.phone}
-                                                        onChange={handleInputChange}
-                                                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all font-mono"
-                                                    />
-                                                </div>
-                                                {formData.phone && formData.phone.length > 0 && formData.phone.length < 10 && (
-                                                    <p className="text-[11px] text-amber-600 mt-1 font-medium">
-                                                        {10 - formData.phone.length} more digit{10 - formData.phone.length === 1 ? "" : "s"} required (10 digits needed)
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* Year of Study */}
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                                                    Year of Study *
-                                                </label>
-                                                <select
-                                                    name="yearOfStudy"
-                                                    required
-                                                    value={formData.yearOfStudy}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all"
-                                                >
-                                                    {YEARS_OF_STUDY.map((year) => (
-                                                        <option key={year} value={year}>
-                                                            {year}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            {/* Blood Group (Optional) */}
-                                            <div className="md:col-span-2">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                                        Blood Group
-                                                    </label>
-                                                    <span className="text-[11px] font-medium text-slate-400">Optional (Used for Blood Donation Camps & Emergency Drives)</span>
-                                                </div>
-                                                <select
-                                                    name="bloodGroup"
-                                                    value={formData.bloodGroup}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all"
-                                                >
-                                                    <option value="">Select Blood Group (Optional)</option>
-                                                    {BLOOD_GROUPS.map((bg) => (
-                                                        <option key={bg} value={bg}>
-                                                            {bg}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                        </div>
-                                    </div>
-
-                                    {/* SECTION 2: MOTIVATION & ASPIRATIONS */}
-                                    <div className="space-y-4 pt-2">
-                                        <h3 className="text-sm font-bold uppercase tracking-wider text-rotaract-navy flex items-center gap-2 border-b border-slate-100 pb-2">
-                                            <BookOpen className="w-4 h-4 text-rotaract-cranberry" />
-                                            <span>2. Interests & Aspirations</span>
-                                        </h3>
-
-                                        {/* Why Join Rotaract */}
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                                                Why would you like to join Rotaract BMSCE?
-                                            </label>
-                                            <textarea
-                                                name="whyJoin"
-                                                rows={3}
-                                                placeholder="Tell us what excites you—organizing events, community service, meeting new people, leadership development, etc."
-                                                value={formData.whyJoin}
-                                                onChange={handleInputChange}
-                                                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all font-light"
-                                            />
-                                        </div>
-
-                                        {/* Prior Experience / Skills */}
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                                                Skills & Interests (Optional)
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="priorExperience"
-                                                placeholder="e.g. Photography, Graphic Design (Canva/Figma), Public Speaking, Content Writing, Web Dev"
-                                                value={formData.priorExperience}
-                                                onChange={handleInputChange}
-                                                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry transition-all"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* SECTION 3: PAYMENT QR CODE & SCREENSHOT UPLOAD */}
-                                    <div id="screenshot-upload-section" className="space-y-6 pt-4 border-t border-slate-200">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 pb-2">
-                                            <h3 className="text-sm font-bold uppercase tracking-wider text-rotaract-navy flex items-center gap-2">
-                                                <QrCode className="w-4 h-4 text-emerald-600" />
-                                                <span>3. Pay ₹{payableAmount} via UPI & Upload Screenshot *</span>
-                                            </h3>
-                                            <span className="text-xs text-slate-500 font-medium">
-                                                Saved to Drive with student name
-                                            </span>
-                                        </div>
-
-                                        {/* QR Code Container Card */}
-                                        <div className="bg-slate-50 rounded-3xl p-6 sm:p-8 border border-slate-200 space-y-6">
-                                            <div className="text-center max-w-md mx-auto space-y-2">
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-                                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                                    <span>Official Rotaract BMSCE Payment QR</span>
-                                                </span>
-                                                <h4 className="text-xl font-extrabold font-heading text-rotaract-navy">
-                                                    Scan & Pay ₹{payableAmount}
-                                                </h4>
-                                                <p className="text-xs text-slate-500 font-light">
-                                                    Scan with Google Pay, PhonePe, Paytm, BHIM, or any UPI app.
-                                                </p>
-                                            </div>
-
-                                            {/* Dynamic QR Code */}
-                                            <div className="flex flex-col items-center justify-center space-y-4">
-                                                <div className="w-64 sm:w-72 max-w-full bg-white p-2.5 rounded-3xl shadow-md border-2 border-slate-200 flex items-center justify-center transition-transform hover:scale-[1.02] relative">
-                                                    <img
-                                                        key={`${paymentConfig.selectedQrId || "qr"}-${paymentQrImage}-${clubUpiId}`}
-                                                        src={
-                                                            paymentConfig.qrMode === "dynamic_upi" || qrImageError
-                                                                ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiDeepLink)}`
-                                                                : (paymentQrImage.startsWith("data:") || paymentQrImage.includes("?")
-                                                                    ? paymentQrImage
-                                                                    : `${paymentQrImage}?v=${encodeURIComponent(paymentConfig.lastUpdated || paymentConfig.selectedQrId || "1")}`)
-                                                        }
-                                                        alt="Rotaract BMSCE UPI QR Code"
-                                                        className="w-full h-auto object-contain rounded-2xl"
-                                                        onError={() => {
-                                                            setQrImageError(true);
-                                                        }}
-                                                    />
-                                                </div>
-
-                                                {/* UPI ID Pill & Copy Button */}
-                                                <div className="flex items-center justify-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
-                                                    <span className="text-xs text-slate-500 font-medium">Club UPI ID:</span>
-                                                    <span className="text-xs font-mono font-bold text-slate-800">{clubUpiId}</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={copyUpiToClipboard}
-                                                        className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors ml-1"
-                                                        title="Copy UPI ID"
-                                                    >
-                                                        {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                                                    </button>
-                                                </div>
-
-                                                {/* Supported UPI Apps */}
-                                                <div className="flex items-center justify-center gap-5 text-slate-500">
-                                                    <SiGooglepay className="w-6 h-6 text-slate-700" title="Google Pay" />
-                                                    <SiPhonepe className="w-5 h-5 text-purple-600" title="PhonePe" />
-                                                    <SiPaytm className="w-6 h-6 text-sky-600" title="Paytm" />
-                                                    <span className="text-[11px] font-semibold text-slate-500">BHIM / Any Bank App</span>
-                                                </div>
-
-                                                {/* Mobile Deep Link */}
-                                                <div className="sm:hidden w-full max-w-xs pt-1">
-                                                    <a
-                                                        href={upiDeepLink}
-                                                        className="w-full py-2.5 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
-                                                    >
-                                                        <Smartphone className="w-4 h-4 text-rotaract-gold" />
-                                                        <span>Tap to Pay ₹{payableAmount} in UPI App</span>
-                                                    </a>
-                                                </div>
-                                            </div>
-
-                                            {/* UPLOAD PAYMENT SCREENSHOT SECTION */}
-                                            <div className="pt-6 border-t border-slate-200/80 space-y-4">
-                                                <div className="text-center sm:text-left">
-                                                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
-                                                        Upload Payment Screenshot *
-                                                    </label>
-                                                    <p className="text-xs text-slate-500 font-light">
-                                                        Take a screenshot of the completed payment in your UPI app and upload it below. It will be saved in our Google Drive folder with your name ({formData.fullName || "Student"}).
-                                                    </p>
-                                                </div>
-
-                                                {/* Hidden File Input */}
-                                                <input
-                                                    ref={fileInputRef}
-                                                    type="file"
-                                                    accept="image/*,application/pdf"
-                                                    onChange={handleFileChange}
-                                                    className="hidden"
-                                                    id="payment-screenshot-file-input"
-                                                />
-
-                                                {!screenshotPreview ? (
-                                                    /* Drag and drop upload zone */
-                                                    <div
-                                                        onDragOver={(e) => {
-                                                            e.preventDefault();
-                                                            setIsDragOver(true);
-                                                        }}
-                                                        onDragLeave={() => setIsDragOver(false)}
-                                                        onDrop={handleDrop}
-                                                        onClick={() => fileInputRef.current?.click()}
-                                                        className={`cursor-pointer border-2 border-dashed rounded-2xl p-8 text-center transition-all flex flex-col items-center justify-center gap-3 ${isDragOver
-                                                            ? "border-rotaract-cranberry bg-rotaract-cranberry/5 scale-[1.01]"
-                                                            : "border-slate-300 bg-white hover:border-rotaract-cranberry hover:bg-slate-50"
-                                                            }`}
-                                                    >
-                                                        <div className="w-14 h-14 rounded-2xl bg-rotaract-cranberry/10 text-rotaract-cranberry flex items-center justify-center shadow-sm">
-                                                            <UploadCloud className="w-7 h-7" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-slate-800">
-                                                                Click or drag & drop payment screenshot here
-                                                            </p>
-                                                            <p className="text-xs text-slate-400 mt-1">
-                                                                Supports JPG, PNG, WEBP, or PDF (Max 10MB)
-                                                            </p>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors mt-1"
-                                                        >
-                                                            Browse Files
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    /* Screenshot Preview Card */
-                                                    <div className="bg-white p-4 rounded-2xl border-2 border-emerald-500/40 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-                                                        <div className="flex items-center gap-4 w-full sm:w-auto">
-                                                            <div className="w-16 h-16 rounded-xl border border-slate-200 bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                                                {screenshotFile?.type.startsWith("image/") ? (
-                                                                    <img
-                                                                        src={screenshotPreview}
-                                                                        alt="Payment Screenshot Preview"
-                                                                        className="w-full h-full object-cover"
-                                                                    />
-                                                                ) : (
-                                                                    <FileImage className="w-8 h-8 text-slate-500" />
-                                                                )}
-                                                            </div>
-
-                                                            <div className="overflow-hidden">
-                                                                <div className="inline-flex items-center gap-1.5 text-emerald-600 text-[11px] font-bold">
-                                                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                                                    <span>Screenshot Ready for Drive Upload</span>
-                                                                </div>
-                                                                <p className="text-xs font-bold text-slate-800 truncate max-w-xs">
-                                                                    {screenshotFile?.name}
-                                                                </p>
-                                                                <p className="text-[11px] text-slate-400">
-                                                                    {(screenshotFile?.size ? (screenshotFile.size / 1024).toFixed(1) : 0)} KB • Will be saved as &quot;{formData.fullName || "Student"} - Payment Screenshot&quot;
-                                                                </p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => fileInputRef.current?.click()}
-                                                                className="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
-                                                            >
-                                                                Replace
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={handleRemoveScreenshot}
-                                                                className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs transition-colors"
-                                                                title="Remove file"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Payee Name & Transaction UTR (After screenshot upload) */}
-                                                <div className="pt-3 border-t border-slate-200/80 space-y-4">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {/* Payee Name (Mandatory) */}
-                                                        <div>
-                                                            <label htmlFor="payee-name-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                                                                Payee Name *
-                                                            </label>
-                                                            <input
-                                                                id="payee-name-input"
-                                                                type="text"
-                                                                name="payeeName"
-                                                                required
-                                                                placeholder="e.g. Rahul Sharma / Parent's Name"
-                                                                value={formData.payeeName}
-                                                                onChange={handleInputChange}
-                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 font-medium transition-all"
-                                                            />
-                                                            <span className="block text-[11px] text-slate-400 mt-1">
-                                                                Account holder&apos;s name as displayed in your UPI payment screenshot (Mandatory)
-                                                            </span>
-                                                        </div>
-
-                                                        {/* Optional UTR / Reference Number Field */}
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                                                                UPI Transaction Ref / UTR (Optional)
-                                                            </label>
-                                                            <input
-                                                                type="text"
-                                                                name="transactionId"
-                                                                placeholder="e.g. 428190284712 (12-digit number)"
-                                                                value={formData.transactionId}
-                                                                onChange={handleInputChange}
-                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono transition-all"
-                                                            />
-                                                            <span className="block text-[11px] text-slate-400 mt-1">
-                                                                12-digit UTR from your UPI payment receipt
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                    </div>
-
-                                    {/* SUBMISSION STRIP */}
-                                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-medium">Selected Membership:</p>
-                                                <p className="text-base font-bold text-rotaract-navy">
-                                                    {CLUB_MEMBERSHIP.name}
-                                                </p>
-                                                <p className="text-xs text-slate-500">
-                                                    ₹320 for 4 years • official rotaract BMSCE membership (RM)
-                                                </p>
-                                            </div>
-
-                                            <div className="text-left sm:text-right">
-                                                <p className="text-xs text-slate-500 font-medium">Total Amount:</p>
-                                                <p className="text-3xl font-extrabold text-rotaract-cranberry font-heading">
-                                                    ₹{payableAmount}
-                                                </p>
-                                                <span className="text-[11px] text-slate-400 block">for 4 years</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200">
-                                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                                                <span>Direct Verification • Screenshot saved under student name</span>
-                                            </div>
-
-                                            <button
-                                                type="submit"
-                                                disabled={isSubmitting}
-                                                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 disabled:opacity-50 text-white font-bold text-sm shadow-lg shadow-rotaract-cranberry/30 hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 group flex-shrink-0"
-                                            >
-                                                {isSubmitting ? (
-                                                    <>
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                        <span>Submitting & Saving to Drive...</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <UserCheck className="w-4 h-4" />
-                                                        <span>Submit Membership Application</span>
-                                                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                                    </>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                </form>
-                            ) : (
-                                /* ================= CONFIRMATION & DIGITAL RECEIPT STATE ================= */
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="py-6 space-y-8 max-w-2xl mx-auto"
-                                >
-                                    <div className="text-center space-y-3">
-                                        <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md">
-                                            <CheckCircle2 className="w-10 h-10" />
-                                        </div>
-
-                                        <h3 className="text-3xl font-extrabold font-heading text-rotaract-navy">
-                                            Welcome to the Rotaract Family!
-                                        </h3>
-                                        <p className="text-sm text-slate-600 font-light leading-relaxed">
-                                            Congratulations, <strong className="font-semibold text-slate-800">{receiptData?.fullName}</strong>!
-                                            Your Club Membership registration and payment screenshot have been submitted and logged.
-                                        </p>
-                                    </div>
-
-                                    {/* PRINTABLE DIGITAL RECEIPT CARD */}
-                                    <div id="rotaract-membership-receipt" className="bg-white rounded-3xl border-2 border-slate-200 p-6 sm:p-8 shadow-lg space-y-6">
-                                        <div className="flex items-start justify-between border-b border-slate-200 pb-4">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-3 h-3 rounded-full bg-rotaract-cranberry inline-block" />
-                                                    <h4 className="font-extrabold text-base sm:text-lg font-heading text-rotaract-navy">
-                                                        Rotaract Club of BMSCE
-                                                    </h4>
-                                                </div>
-                                                <p className="text-xs text-slate-500 mt-0.5">
-                                                    RI District 3191 • BMS College of Engineering
-                                                </p>
-                                            </div>
-
-                                            <div className="text-right">
-                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                                                    <CheckCircle2 className="w-3 h-3" />
-                                                    <span>SCREENSHOT SUBMITTED</span>
-                                                </span>
-                                                <p className="text-[11px] text-slate-400 mt-1">
-                                                    {receiptData?.date}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Receipt Data Grid */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                                            <div className="p-3 bg-slate-50 rounded-xl">
-                                                <span className="text-slate-400 block font-medium">Receipt No:</span>
-                                                <span className="font-mono font-bold text-slate-800 text-sm">
-                                                    {receiptData?.receiptId}
-                                                </span>
-                                            </div>
-
-                                            <div className="p-3 bg-slate-50 rounded-xl">
-                                                <span className="text-slate-400 block font-medium">Transaction Reference / UTR:</span>
-                                                <span className="font-mono font-bold text-slate-800 truncate block">
-                                                    {receiptData?.transactionId}
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-slate-400 block font-medium">Member Name:</span>
-                                                <span className="font-bold text-slate-800 text-sm">
-                                                    {receiptData?.fullName}
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-slate-400 block font-medium">BMSCE USN:</span>
-                                                <span className="font-bold text-slate-800 uppercase font-mono">
-                                                    {receiptData?.usn}
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-slate-400 block font-medium">Personal Email:</span>
-                                                <span className="text-slate-700 font-medium break-all">
-                                                    {receiptData?.personalEmail}
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-slate-400 block font-medium">College Email:</span>
-                                                <span className="text-slate-700 font-medium break-all">
-                                                    {receiptData?.collegeEmail}
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-slate-400 block font-medium">Year of Study:</span>
-                                                <span className="text-slate-700 font-medium">
-                                                    {receiptData?.yearOfStudy}
-                                                </span>
-                                            </div>
-
-                                            {receiptData?.bloodGroup && receiptData.bloodGroup !== "Not Specified" && (
-                                                <div>
-                                                    <span className="text-slate-400 block font-medium">Blood Group:</span>
-                                                    <span className="text-slate-700 font-medium">
-                                                        {receiptData.bloodGroup}
-                                                    </span>
-                                                </div>
-                                            )}
-
-                                            <div>
-                                                <span className="text-slate-400 block font-medium">Payee Name (UPI):</span>
-                                                <span className="text-slate-700 font-medium">
-                                                    {receiptData?.payeeName}
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-slate-400 block font-medium">Phone / WhatsApp:</span>
-                                                <span className="text-slate-700 font-medium">
-                                                    +91 {receiptData?.phone}
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-slate-400 block font-medium">Membership Tier:</span>
-                                                <span className="font-extrabold text-rotaract-navy text-sm">
-                                                    {receiptData?.membershipType} (4 Years)
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-slate-400 block font-medium">Drive Screenshot Status:</span>
-                                                <span className="font-semibold text-emerald-700 flex items-center gap-1 mt-0.5">
-                                                    <Check className="w-3.5 h-3.5" />
-                                                    <span>Saved under student name</span>
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Screenshot Preview in Receipt */}
-                                        {receiptData?.screenshotUrl && (
-                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                                                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                                                    Attached Payment Screenshot:
-                                                </span>
-                                                <div className="max-h-48 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center p-2">
-                                                    <img
-                                                        src={receiptData.screenshotUrl}
-                                                        alt="Uploaded Screenshot"
-                                                        className="max-h-44 object-contain rounded-lg"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="p-4 bg-rotaract-navy/5 rounded-2xl border border-rotaract-navy/10 flex items-center justify-between">
-                                            <div>
-                                                <span className="text-xs text-slate-500 font-medium">Total Membership Fee</span>
-                                                <p className="text-xs text-slate-400">Membership Valid: 4 Years (2026–2030)</p>
-                                            </div>
-                                            <span className="text-2xl font-extrabold font-heading text-rotaract-cranberry">
-                                                ₹{receiptData?.amount}.00
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Updates & WhatsApp Onboarding Notice */}
-                                    <div className="p-5 sm:p-6 bg-slate-50 rounded-2xl border border-slate-200 text-left flex items-start gap-3.5 shadow-sm">
-                                        <div className="w-8 h-8 rounded-xl bg-rotaract-cranberry/10 text-rotaract-cranberry flex items-center justify-center flex-shrink-0 mt-0.5">
-                                            <Mail className="w-4 h-4" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Updates & Membership Induction
-                                            </p>
-                                            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-                                                You will be notified about the updates soon through mail and added to a WhatsApp group within 2 weeks.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                                        <Link
-                                            href="/"
-                                            className="w-full sm:w-auto px-8 py-3 rounded-xl bg-rotaract-navy text-white text-xs font-bold hover:bg-rotaract-dark transition-all text-center shadow-sm"
-                                        >
-                                            Return to Home
-                                        </Link>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsSubmitted(false);
-                                                setFormData(INITIAL_FORM);
-                                                setReceiptData(null);
-                                                handleRemoveScreenshot();
-                                            }}
-                                            className="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 hover:text-rotaract-cranberry transition-all"
-                                        >
-                                            Submit Another Application
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </div>
-
                     </div>
                 </section>
 
@@ -1416,7 +433,7 @@ export default function JoinTheClubPage() {
                 <section className="bg-gradient-to-r from-rotaract-navy to-rotaract-dark text-white rounded-3xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-md">
                     <div className="space-y-2 text-center md:text-left">
                         <h3 className="text-xl md:text-2xl font-bold font-heading">
-                            Still have questions about joining?
+                            Still have questions about Rotaract BMSCE?
                         </h3>
                         <p className="text-slate-300 text-xs md:text-sm font-light">
                             Our team is always open to chatting. Drop us a message or visit our campus desk!
@@ -1432,7 +449,7 @@ export default function JoinTheClubPage() {
                             <ArrowRight className="w-4 h-4" />
                         </Link>
                         <Link
-                            href="https://instagram.com/rotaract_bmsce"
+                            href="https://www.instagram.com/rotaract_bmsce/"
                             target="_blank"
                             className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all border border-white/20 flex items-center gap-2"
                         >
