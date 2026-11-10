@@ -108,7 +108,7 @@ export default function LegacyPage() {
                             <div className="absolute inset-0 bg-gradient-to-t from-rotaract-navy/80 via-rotaract-navy/20 to-transparent" />
                             <div className="absolute bottom-0 left-0 p-6 md:p-10 w-full">
                                 <h3 className="text-2xl md:text-4xl font-heading font-bold text-white mb-2">
-                                    "{lastYearData.theme}"
+                                    &ldquo;{lastYearData.theme}&rdquo;
                                 </h3>
                                 <p className="text-white/80 text-sm md:text-base">
                                     Led by President {lastYearData.president} and Secretary {lastYearData.secretary}

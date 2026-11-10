@@ -449,7 +449,7 @@ export default function UpcomingEventsPage() {
                                         <CheckCircle2 className="w-10 h-10" />
                                     </div>
                                     <h3 className="text-2xl font-bold font-heading text-rotaract-navy">
-                                        You're Registered!
+                                        You&apos;re Registered!
                                     </h3>
                                     <p className="text-slate-600 text-sm leading-relaxed">
                                         Thank you, <strong className="text-slate-800">{formData.fullName}</strong>. Your entry has been saved under <span className="text-slate-800">{formData.email}</span>.

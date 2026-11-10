@@ -110,7 +110,7 @@ export default function AboutPage() {
                                 <div className="relative pl-6 md:pl-8 border-l-4 border-rotaract-cranberry space-y-4">
                                     <Quote className="w-8 h-8 text-rotaract-cranberry/40 absolute -left-4 -top-3 bg-white p-1" />
                                     <blockquote className="text-xl md:text-2xl font-heading font-medium text-rotaract-navy leading-relaxed italic">
-                                        "{visionStatement}"
+                                        &ldquo;{visionStatement}&rdquo;
                                     </blockquote>
                                     <div className="pt-2">
                                         <p className="font-bold font-heading text-slate-900 text-base">{president.name}</p>
@@ -169,7 +169,7 @@ export default function AboutPage() {
                                     </div>
 
                                     <p className="text-xs text-slate-600 italic px-4 leading-relaxed font-light">
-                                        "{member.quote}"
+                                        &ldquo;{member.quote}&rdquo;
                                     </p>
                                 </div>
 
