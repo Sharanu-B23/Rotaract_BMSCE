@@ -8,9 +8,7 @@ export const revalidate = 0;
 
 const CONFIG_PATH = path.join(process.cwd(), "src", "data", "paymentSettings.json");
 const TMP_CONFIG_PATH = path.join(os.tmpdir(), "rotaract_paymentSettings.json");
-const CUSTOM_IMAGE_DIR = path.join(process.cwd(), "public", "images");
 const QR_LIBRARY_DIR = path.join(process.cwd(), "public", "images", "qr-library");
-const CUSTOM_IMAGE_FILE = path.join(CUSTOM_IMAGE_DIR, "custom-payment-qr.png");
 
 // Memory cache across serverless invocations within the same process
 declare global {

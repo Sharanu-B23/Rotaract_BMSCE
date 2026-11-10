@@ -8,7 +8,6 @@ import {
     Calendar,
     Clock,
     MapPin,
-    Users,
     AlertCircle,
     X,
     CheckCircle2,
@@ -156,9 +155,7 @@ export default function UpcomingEventsPage() {
 
                 {eventsList.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                        {eventsList.map((event) => {
-                            const isLowSpots = event.spotsLeft <= 20;
-                            return (
+                        {eventsList.map((event) => (
                                 <div
                                     key={event.id}
                                     className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group"
@@ -234,8 +231,7 @@ export default function UpcomingEventsPage() {
                                         </button>
                                     </div>
                                 </div>
-                            );
-                        })}
+                            ))}
                     </div>
                 ) : (
                     /* ================= EMPTY STATE ================= */

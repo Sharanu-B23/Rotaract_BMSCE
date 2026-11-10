@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ArrowRight, Sparkles, UserCheck } from "lucide-react";
+import { Menu, X, User } from "lucide-react";
 
 const NAV_LINKS = [
     { href: "/", label: "Home" },
@@ -102,13 +102,14 @@ export default function Navbar() {
                 </nav>
 
                 {/* DESKTOP PERSISTENT CTA */}
-                <div className="hidden lg:flex items-center gap-4">
+                <div className="hidden lg:flex items-center">
                     <Link
                         href="/admin"
-                        className="px-5 py-2.5 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white text-xs xl:text-sm font-bold shadow-md shadow-rotaract-navy/20 hover:shadow-lg transition-all flex items-center gap-2 group border border-white/20"
+                        title="Admin Login"
+                        aria-label="Admin Login"
+                        className="p-2.5 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white shadow-md shadow-rotaract-navy/20 hover:shadow-lg transition-all flex items-center justify-center group border border-white/20"
                     >
-                        <UserCheck className="w-4 h-4 text-rotaract-gold" />
-                        <span>Admin Login</span>
+                        <User className="w-5 h-5 text-rotaract-gold transition-transform group-hover:scale-110" />
                     </Link>
                 </div>
 
@@ -157,7 +158,7 @@ export default function Navbar() {
                                 href="/admin"
                                 className="w-full py-3.5 rounded-xl bg-rotaract-navy text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2"
                             >
-                                <UserCheck className="w-4 h-4 text-rotaract-gold" />
+                                <User className="w-4 h-4 text-rotaract-gold" />
                                 <span>Admin Portal / Login</span>
                             </Link>
                         </div>

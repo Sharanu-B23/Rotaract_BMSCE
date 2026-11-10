@@ -10,7 +10,7 @@ import {
     CheckCircle2,
     MessageSquare
 } from "lucide-react";
-import { FaLinkedin as Linkedin, FaInstagram as Instagram, FaFacebook as Facebook } from "react-icons/fa";
+import { FaLinkedin as Linkedin, FaInstagram as Instagram } from "react-icons/fa";
 
 export default function ContactPage() {
     const [isSubmitted, setIsSubmitted] = useState(false);

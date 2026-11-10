@@ -18,7 +18,6 @@ const legacyData = legacyDataRaw as LegacyYear[];
 
 export default function LegacyPage() {
     const lastYearData = legacyData[0]; // 2025-26
-    const pastPresidents = legacyData; // All of them
 
     return (
         <div className="w-full min-h-screen bg-rotaract-surface font-body pb-24">
@@ -53,7 +52,7 @@ export default function LegacyPage() {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                        {pastPresidents.map((yearData, idx) => (
+                        {legacyData.map((yearData, idx) => (
                             <motion.div
                                 key={yearData.year}
                                 initial={{ opacity: 0, y: 20 }}
@@ -89,7 +88,7 @@ export default function LegacyPage() {
                     <div className="flex items-center gap-2 mb-8">
                         <Users className="w-6 h-6 text-rotaract-cranberry" />
                         <h2 className="text-3xl font-extrabold font-heading text-rotaract-navy">
-                            ({lastYearData.year})
+                            Team of {lastYearData.year}
                         </h2>
                     </div>
 

@@ -12,7 +12,7 @@
             "id": "give-for-good",
             "name": "Give For Good",
             "yearsRunning": "Since 4 Years",
-            "description": "An ongoing educational outreach program empowering underprivileged government schools with computer labs, library books, and weekend mentoring.",
+            "description": "A cancer awareness and fundraising initiative by the Rotaract Club of BMSCE that promotes early detection and supports cancer patients facing financial challenges.",
             "image": "/images/showcase/giveForGood.jpeg",
             "stats": "9,40,000/- Funds Raised"
         },
@@ -28,16 +28,16 @@
             "id": "kali-kannada",
             "name": "Kali Kannada",
             "yearsRunning": "Since 5 Years",
-            "description": "Our flagship community healthcare initiative organized",
+            "description": "An interactive language-learning initiative that helps non-Kannada speakers learn basic Kannada through engaging activities while fostering cultural appreciation and inclusivity.",
             "image": "/images/showcase/kalikannada.jpeg",
-            "stats": ""
+            "stats": "100+ Beneficiaries"
         },
         {
             "id": "ankuram",
             "name": "Ankuram",
             "yearsRunning": "Since 3 Years",
-            "description": "Ankuram is a 3-day initiative where Rotaract volunteers visit government schools and teach students through co-curricular activities.",
-            "image": "/images/showcase/ankuram.jpeg",
+            "description": "A 3-day initiative where Rotaract volunteers visit government schools and teach students through co-curricular activities.",
+            "image": "/images/showcase/Ankuram.jpeg",
             "stats": "250+ Beneficiaries"
         }
     ],
@@ -51,7 +51,40 @@
             "shortDescription": "A vibrant cultural celebration marking the beginning of the Rotaract year. Featuring traditional arts, music, and interactive games, Onam Utsavam brings the community together to share joy and cultural pride.",
             "image": "/images/showcase/events/onamUtsavam.jpeg",
             "location": "BMSCE campus",
-            "impact": "175+ Participants"
+            "impact": "325+ Participants"
+        },
+        {
+            "id": "potluck-party",
+            "title": "Potluck Party",
+            "date": "2025-09-18",
+            "formattedDate": "September 18, 2025",
+            "category": "Club Service",
+            "shortDescription": "A club bonding initiative by the Rotaract Club of BMSCE that brings committee members together over shared meals and conversations to strengthen friendships, teamwork, and unity.",
+            "image": "/images/showcase/events/potluck.jpeg",
+            "location": "",
+            "impact": "15 Participants"
+        },
+        {
+            "id": "turf-fusion",
+            "title": "Turf Fusion",
+            "date": "2025-11-28",
+            "formattedDate": "November 28, 2025",
+            "category": "Club Service",
+            "shortDescription": "A team-bonding initiative by the Rotaract Club of BMSCE that brings members together through cricket, fostering teamwork, sportsmanship, and stronger connections beyond club responsibilities.",
+            "image": "/images/showcase/events/turfFusion.jpeg",
+            "location": "Legacy Sports Academy",
+            "impact": "11 Participants"
+        },
+        {
+            "id": "cue-n-connect",
+            "title": "Cue N Connect",
+            "date": "2025-12-27",
+            "formattedDate": "December 27, 2025",
+            "category": "Club Service",
+            "shortDescription": "A recreational club initiative by the Rotaract Club of BMSCE that brings members together through snooker, encouraging relaxation, friendly competition, and stronger bonds.",
+            "image": "/images/showcase/events/cuenconnect.jpeg",
+            "location": "Snooker Point, Banashankari",
+            "impact": "9 Participants"
         },
         {
             "id": "childrens-day",
@@ -103,7 +136,7 @@
             "date": "2025-12-15",
             "formattedDate": "December 15, 2025",
             "category": "S.P.A.W",
-            "shortDescription": "A community-driven initiative using reflective collars to improve street dogs' visil=bility at night and reduce road-accident risks.",
+            "shortDescription": "A community-driven initiative using reflective collars to improve street dogs' visibility at night and reduce road-accident risks.",
             "image": "/images/showcase/events/collars-of-care.jpeg",
             "location": "Streets of Basavanagudi",
             "impact": "50 Paws"
@@ -111,11 +144,11 @@
         {
             "id": "pawlentines",
             "title": "Paw-Lentine's Day",
-            "date": "2025-02-15",
-            "formattedDate": "February 15, 2025",
+            "date": "2026-02-15",
+            "formattedDate": "February 15, 2026",
             "category": "S.P.A.W",
             "shortDescription": "A valentine's celebration for dogs promoting love, responsible pet ownership, and adoption, with three puppies finding forever homes.",
-            "image": "/images/showcase/events/pawlentines-day.jpeg",
+            "image": "/images/showcase/events/santabow.jpeg",
             "location": "Cubbon Park",
             "impact": "15 Paws"
         },
@@ -127,7 +160,7 @@
             "category": "Community Service",
             "shortDescription": "A heartwarming initiative dedicated to providing essential care packages to those in need. Through Kits of Care, we distribute hygiene products, food supplies, and other daily necessities, ensuring that vulnerable communities receive the support they deserve.",
             "image": "/images/showcase/events/kitsOfCare.jpeg",
-            "location": "Makkala Dhama Orphanage",
+            "location": "",
             "impact": "20 Kits Distributed"
         },
         {
@@ -136,10 +169,10 @@
             "date": "2026-01-18",
             "formattedDate": "January 18, 2026",
             "category": "Public Image",
-            "shortDescription": "A poignant photography-based project aimed at capturing and sharing the stories, dreams, and experiences of Rotaract members, fostering deeper connections and mutual understanding within our diverse community.",
+            "shortDescription": "An interactive video series by the Rotaract Club of BMSCE that highlights Rotaractors’ experiences, memorable moments, and perspectives on leadership, fellowship, and service through engaging conversations.",
             "image": "/images/showcase/events/humansOfRotaract.jpeg",
             "location": "Instagram",
-            "impact": "10+ Members Featured"
+            "impact": "3M+ views"
         },
         {
             "id": "dhanyawada-gurus",
@@ -177,10 +210,10 @@
         {
             "id": "change-the-narrative",
             "title": "Change The Narrative : Suicide Prevention",
-            "date": "2026-03-05",
-            "formattedDate": "March 5, 2026",
+            "date": "2025-09-10",
+            "formattedDate": "September 10, 2025",
             "category": "Public Image",
-            "shortDescription": "A musical evening filled with captivating performances, melodious tunes, and foot-tapping rhythms. This event brings together music lovers to enjoy a spectacular showcase of talent, creating an unforgettable experience for all attendees.",
+            "shortDescription": "A mental health awareness initiative by the Rotaract Club of BMSCE that promotes suicide prevention, challenges stigma, and encourages empathy, open conversations, and peer support.",
             "image": "/images/showcase/events/changeTheNarrative.jpeg",
             "location": "BMSCE",
             "impact": ""
@@ -188,10 +221,10 @@
         {
             "id": "rotas-dayout",
             "title": "Rotas Dayout",
-            "date": "2026-03-05",
-            "formattedDate": "March 5, 2026",
+            "date": "2026-01-28",
+            "formattedDate": "January 28, 2026",
             "category": "Club Service",
-            "shortDescription": "A musical evening filled with captivating performances, melodious tunes, and foot-tapping rhythms. This event brings together music lovers to enjoy a spectacular showcase of talent, creating an unforgettable experience for all attendees.",
+            "shortDescription": "A recreational outing by the Rotaract Club of BMSCE that brings members together through adventure activities, indoor games, and shared experiences, fostering stronger friendships, teamwork, and club unity.",
             "image": "/images/showcase/events/rotasDayOut.jpeg",
             "location": "BMSCE",
             "impact": ""
@@ -199,10 +232,10 @@
         {
             "id": "ai-crossroads",
             "title": "AI Crossroads",
-            "date": "2026-03-05",
-            "formattedDate": "March 5, 2026",
-            "category": "International Service ",
-            "shortDescription": "A musical evening filled with captivating performances, melodious tunes, and foot-tapping rhythms. This event brings together music lovers to enjoy a spectacular showcase of talent, creating an unforgettable experience for all attendees.",
+            "date": "2025-11-22",
+            "formattedDate": "November 22, 2025",
+            "category": "International Service",
+            "shortDescription": "An international collaborative initiative by the Rotaract Club of BMSCE and the Rotaract Club of Biratnagar Central, Nepal, exploring the benefits and ethical challenges of artificial intelligence through interactive discussions and expert insights.",
             "image": "/images/showcase/events/aiCrossroads.jpeg",
             "location": "BMSCE",
             "impact": ""

@@ -13,7 +13,6 @@ import {
     Plus,
     Trash2,
     Edit3,
-    FileSpreadsheet,
     ShieldCheck,
     AlertCircle,
     Upload,
