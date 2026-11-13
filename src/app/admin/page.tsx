@@ -56,12 +56,30 @@ interface EventItem {
     time: string;
     venue: string;
     shortDescription: string;
-    spotsLeft: number;
-    totalSpots: number;
+    detailedDescription?: string;
+    registrationLink?: string;
+    spotsLeft?: number;
+    totalSpots?: number;
     deadline: string;
     category: string;
     audience?: "everyone" | "members" | "ri_members";
 }
+
+const DEFAULT_EVENT_FORM: Partial<EventItem> = {
+    title: "",
+    banner: "",
+    date: "",
+    time: "",
+    venue: "",
+    shortDescription: "",
+    detailedDescription: "",
+    registrationLink: "",
+    spotsLeft: 50,
+    totalSpots: 100,
+    deadline: "",
+    category: "Community Service",
+    audience: "everyone",
+};
 
 export default function AdminPortalPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -137,21 +155,11 @@ export default function AdminPortalPage() {
 
     // --- EVENT MANAGEMENT STATE ---
     const [eventsList, setEventsList] = useState<EventItem[]>([]);
-    const [eventForm, setEventForm] = useState<Partial<EventItem>>({
-        title: "",
-        banner: "/images/events/blood-donation-banner.jpg",
-        date: "",
-        time: "",
-        venue: "",
-        shortDescription: "",
-        spotsLeft: 50,
-        totalSpots: 100,
-        deadline: "",
-        category: "Community Service",
-        audience: "everyone",
-    });
+    const [eventForm, setEventForm] = useState<Partial<EventItem>>(DEFAULT_EVENT_FORM);
     const [isEditingEvent, setIsEditingEvent] = useState(false);
+    const [isSavingEvent, setIsSavingEvent] = useState(false);
     const [eventSuccessMsg, setEventSuccessMsg] = useState("");
+    const [eventErrorMsg, setEventErrorMsg] = useState("");
     const [isAuthenticating, setIsAuthenticating] = useState(false);
 
     const loginWithGoogle = useGoogleLogin({
@@ -252,24 +260,74 @@ export default function AdminPortalPage() {
         }
     }, []);
 
-    // Load custom events from localStorage or fallback to JSON
+    // Load live events from server API with localStorage fallback
     useEffect(() => {
-        const storedEvents = localStorage.getItem("rotaract_events_data");
-        if (storedEvents) {
+        async function loadEvents() {
             try {
-                setEventsList(JSON.parse(storedEvents));
-            } catch (e) {
-                setEventsList(upcomingEventsRaw as EventItem[]);
+                const res = await fetch("/api/events", { cache: "no-store" });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.events)) {
+                        if (data.source !== "file" || data.events.length > 0) {
+                            setEventsList(data.events);
+                            try {
+                                localStorage.setItem("rotaract_events_data", JSON.stringify(data.events));
+                            } catch {
+                                // Ignore storage quota errors
+                            }
+                            return;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn("Events API fetch failed, using local fallback:", err);
             }
-        } else {
+
+            const storedEvents = localStorage.getItem("rotaract_events_data");
+            if (storedEvents) {
+                try {
+                    setEventsList(JSON.parse(storedEvents));
+                    return;
+                } catch {
+                    // Fallback to JSON
+                }
+            }
             setEventsList(upcomingEventsRaw as EventItem[]);
         }
+        loadEvents();
     }, []);
 
-    // Save events to localStorage whenever modified
-    const saveEventsToStorage = (updatedList: EventItem[]) => {
+    // Persist events to server API and localStorage
+    const saveEventsToStorage = async (updatedList: EventItem[]): Promise<boolean> => {
         setEventsList(updatedList);
-        localStorage.setItem("rotaract_events_data", JSON.stringify(updatedList));
+        try {
+            localStorage.setItem("rotaract_events_data", JSON.stringify(updatedList));
+        } catch (storageErr) {
+            console.warn("localStorage quota exceeded:", storageErr);
+        }
+
+        try {
+            const res = await fetch("/api/events", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ events: updatedList }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && Array.isArray(data.events)) {
+                    setEventsList(data.events);
+                    try {
+                        localStorage.setItem("rotaract_events_data", JSON.stringify(data.events));
+                    } catch {
+                        // Ignore storage quota errors
+                    }
+                    return true;
+                }
+            }
+        } catch (err) {
+            console.error("Failed to sync events to server API:", err);
+        }
+        return false;
     };
 
     // --- QR CODE & PAYMENT CONFIG STATE ---
@@ -773,61 +831,134 @@ export default function AdminPortalPage() {
         }
     };
 
-    // Handle Event Save / Update
-    const handleSaveEvent = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!eventForm.title || !eventForm.date || !eventForm.venue) return;
-
-        let updatedEvents: EventItem[];
-
-        if (isEditingEvent && eventForm.id) {
-            updatedEvents = eventsList.map((ev) => (ev.id === eventForm.id ? (eventForm as EventItem) : ev));
-        } else {
-            const newEvent: EventItem = {
-                id: `evt-${Date.now()}`,
-                title: eventForm.title || "",
-                banner: eventForm.banner || "/images/events/blood-donation-banner.jpg",
-                date: eventForm.date || "",
-                time: eventForm.time || "10:00 AM IST",
-                venue: eventForm.venue || "",
-                shortDescription: eventForm.shortDescription || "",
-                spotsLeft: Number(eventForm.spotsLeft) || 50,
-                totalSpots: Number(eventForm.totalSpots) || 100,
-                deadline: eventForm.deadline || "Registration open until full",
-                category: eventForm.category || "Community Service",
-                audience: eventForm.audience || "everyone",
+    const compressPosterFile = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new window.Image();
+                img.onload = () => {
+                    const maxWidth = 1000;
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) {
+                        resolve(reader.result as string);
+                        return;
+                    }
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL("image/jpeg", 0.85));
+                };
+                img.onerror = () => resolve(reader.result as string);
+                img.src = reader.result as string;
             };
-            updatedEvents = [newEvent, ...eventsList];
+            reader.onerror = () => reject(new Error("Failed to read poster image."));
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const normalizeFormUrl = (url: string): string => {
+        const trimmed = url.trim();
+        if (!trimmed) return "";
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        return `https://${trimmed}`;
+    };
+
+    // Handle Event Save / Update
+    const handleSaveEvent = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setEventErrorMsg("");
+        setEventSuccessMsg("");
+
+        if (!eventForm.title?.trim() || !eventForm.date || !eventForm.venue?.trim()) {
+            setEventErrorMsg("Please fill in the event title, date, and venue.");
+            return;
+        }
+        if (!eventForm.banner) {
+            setEventErrorMsg("Please upload an event poster image (A3 ratio recommended).");
+            return;
+        }
+        if (!eventForm.registrationLink?.trim()) {
+            setEventErrorMsg("Please enter the Google Form registration link.");
+            return;
         }
 
-        saveEventsToStorage(updatedEvents);
-        setEventForm({
-            title: "",
-            banner: "/images/events/blood-donation-banner.jpg",
-            date: "",
-            time: "",
-            venue: "",
-            shortDescription: "",
-            spotsLeft: 50,
-            totalSpots: 100,
-            deadline: "",
-            category: "Community Service",
-            audience: "everyone",
-        });
+        const formattedLink = normalizeFormUrl(eventForm.registrationLink);
+        try {
+            const parsedUrl = new URL(formattedLink);
+            if (!parsedUrl.hostname.includes(".")) {
+                throw new Error("Invalid domain");
+            }
+        } catch {
+            setEventErrorMsg("Please enter a valid Google Form link (e.g. https://forms.gle/...).");
+            return;
+        }
+
+        const detailed = (eventForm.detailedDescription || "").trim();
+        const shortDesc =
+            (eventForm.shortDescription || "").trim() ||
+            (detailed.length > 140 ? `${detailed.slice(0, 140).trim()}...` : detailed);
+
+        const eventPayload: EventItem = {
+            id: isEditingEvent && eventForm.id ? eventForm.id : `evt-${Date.now()}`,
+            title: eventForm.title.trim(),
+            banner: eventForm.banner,
+            date: eventForm.date,
+            time: eventForm.time || "10:00 AM IST",
+            venue: eventForm.venue.trim(),
+            shortDescription: shortDesc,
+            detailedDescription: detailed,
+            registrationLink: formattedLink,
+            spotsLeft: Number(eventForm.spotsLeft) || 50,
+            totalSpots: Number(eventForm.totalSpots) || 100,
+            deadline: eventForm.deadline?.trim() || "Registration open",
+            category: eventForm.category || "Community Service",
+            audience: eventForm.audience || "everyone",
+        };
+
+        const updatedEvents = isEditingEvent && eventForm.id
+            ? eventsList.map((ev) => (ev.id === eventForm.id ? eventPayload : ev))
+            : [eventPayload, ...eventsList];
+
+        setIsSavingEvent(true);
+        const savedToServer = await saveEventsToStorage(updatedEvents);
+        setIsSavingEvent(false);
+
+        const wasEditing = isEditingEvent;
+        setEventForm(DEFAULT_EVENT_FORM);
         setIsEditingEvent(false);
-        setEventSuccessMsg(isEditingEvent ? "Event updated successfully!" : "New event created live!");
+        setEventSuccessMsg(
+            wasEditing
+                ? savedToServer
+                    ? "Event updated successfully!"
+                    : "Event updated locally!"
+                : savedToServer
+                    ? "New event published live!"
+                    : "New event saved locally!"
+        );
         setTimeout(() => setEventSuccessMsg(""), 4000);
     };
 
-    const handleDeleteEvent = (id: string) => {
+    const handleDeleteEvent = async (id: string) => {
         if (confirm("Are you sure you want to delete this event?")) {
             const updated = eventsList.filter((ev) => ev.id !== id);
-            saveEventsToStorage(updated);
+            await saveEventsToStorage(updated);
         }
     };
 
     const handleEditEvent = (ev: EventItem) => {
-        setEventForm(ev);
+        setEventErrorMsg("");
+        setEventSuccessMsg("");
+        setEventForm({
+            ...DEFAULT_EVENT_FORM,
+            ...ev,
+        });
         setIsEditingEvent(true);
     };
 
@@ -2201,13 +2332,19 @@ export default function AdminPortalPage() {
                                     {isEditingEvent ? "Edit Event Details" : "Create New Event"}
                                 </h2>
                                 <p className="text-xs text-slate-500 mt-1">
-                                    Events saved here appear instantly on the live website events page.
+                                    Events saved here appear on the live Upcoming Events page.
                                 </p>
                             </div>
 
                             {eventSuccessMsg && (
                                 <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium">
                                     {eventSuccessMsg}
+                                </div>
+                            )}
+
+                            {eventErrorMsg && (
+                                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl font-medium">
+                                    {eventErrorMsg}
                                 </div>
                             )}
 
@@ -2218,7 +2355,7 @@ export default function AdminPortalPage() {
                                         type="text"
                                         required
                                         placeholder="e.g. Rotaract Orientation 2026"
-                                        value={eventForm.title}
+                                        value={eventForm.title || ""}
                                         onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
                                         className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
                                     />
@@ -2230,7 +2367,7 @@ export default function AdminPortalPage() {
                                         <input
                                             type="date"
                                             required
-                                            value={eventForm.date}
+                                            value={eventForm.date || ""}
                                             onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
                                             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white"
                                         />
@@ -2240,7 +2377,7 @@ export default function AdminPortalPage() {
                                         <input
                                             type="time"
                                             required
-                                            value={eventForm.time}
+                                            value={eventForm.time || ""}
                                             onChange={(e) => setEventForm({ ...eventForm, time: e.target.value })}
                                             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white"
                                         />
@@ -2253,8 +2390,19 @@ export default function AdminPortalPage() {
                                         type="text"
                                         required
                                         placeholder="BMSCE Main Auditorium"
-                                        value={eventForm.venue}
+                                        value={eventForm.venue || ""}
                                         onChange={(e) => setEventForm({ ...eventForm, venue: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-semibold text-slate-700 mb-1">Registration Deadline</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Closes Nov 20, 2026"
+                                        value={eventForm.deadline || ""}
+                                        onChange={(e) => setEventForm({ ...eventForm, deadline: e.target.value })}
                                         className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
                                     />
                                 </div>
@@ -2262,7 +2410,7 @@ export default function AdminPortalPage() {
                                 <div>
                                     <label className="block font-semibold text-slate-700 mb-1">Category</label>
                                     <select
-                                        value={eventForm.category}
+                                        value={eventForm.category || "Community Service"}
                                         onChange={(e) => setEventForm({ ...eventForm, category: e.target.value })}
                                         className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white"
                                     >
@@ -2281,44 +2429,64 @@ export default function AdminPortalPage() {
                                         className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy bg-white font-medium text-rotaract-navy"
                                     >
                                         <option value="everyone">Everyone (Open to All)</option>
-                                        <option value="members">Only Members (Requires Membership ID)</option>
-                                        <option value="ri_members">Only RI Members (Requires RI Membership ID)</option>
+                                        <option value="members">Only Members</option>
+                                        <option value="ri_members">Only RI Members</option>
                                     </select>
                                 </div>
 
                                 <div>
-                                    <label className="block font-semibold text-slate-700 mb-1">Event Poster Image *</label>
-                                    <div className="space-y-2">
+                                    <label className="block font-semibold text-slate-700 mb-1">Google Form Registration Link *</label>
+                                    <input
+                                        type="text"
+                                        inputMode="url"
+                                        required
+                                        placeholder="https://forms.gle/..."
+                                        value={eventForm.registrationLink || ""}
+                                        onChange={(e) => setEventForm({ ...eventForm, registrationLink: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                    />
+                                    <p className="text-[11px] text-slate-400 mt-1">
+                                        Clicking &ldquo;Register Here&rdquo; on the Events page will redirect directly to this Google Form.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block font-semibold text-slate-700 mb-1">Event Poster Image (A3 Ratio • 297×420) *</label>
+                                    <div className="space-y-3">
                                         <div className="flex items-center gap-2">
                                             <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 transition-colors text-slate-600 font-semibold text-xs">
                                                 <Upload className="w-4 h-4 text-rotaract-navy" />
-                                                <span>{eventForm.banner ? "Change Poster File" : "Upload Poster Image"}</span>
+                                                <span>{eventForm.banner ? "Change Poster File" : "Upload A3 Poster Image"}</span>
                                                 <input
                                                     type="file"
                                                     accept="image/*"
                                                     className="hidden"
-                                                    onChange={(e) => {
+                                                    onChange={async (e) => {
                                                         const file = e.target.files?.[0];
                                                         if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                setEventForm({ ...eventForm, banner: reader.result as string });
-                                                            };
-                                                            reader.readAsDataURL(file);
+                                                            try {
+                                                                const compressed = await compressPosterFile(file);
+                                                                setEventForm({ ...eventForm, banner: compressed });
+                                                                setEventErrorMsg("");
+                                                            } catch {
+                                                                setEventErrorMsg("Could not process poster image.");
+                                                            }
                                                         }
                                                     }}
                                                 />
                                             </label>
                                         </div>
                                         {eventForm.banner && (
-                                            <div className="relative w-full h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-                                                <img
-                                                    src={eventForm.banner}
-                                                    alt="Poster Preview"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                <div className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-md backdrop-blur-sm">
-                                                    Poster Preview
+                                            <div className="w-40 mx-auto">
+                                                <div className="relative w-full aspect-[297/420] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-sm">
+                                                    <img
+                                                        src={eventForm.banner}
+                                                        alt="A3 Poster Preview"
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                    <div className="absolute top-1.5 right-1.5 bg-black/65 text-white text-[10px] px-2 py-0.5 rounded-md backdrop-blur-sm">
+                                                        A3 Preview
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -2326,12 +2494,24 @@ export default function AdminPortalPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block font-semibold text-slate-700 mb-1">Description</label>
+                                    <label className="block font-semibold text-slate-700 mb-1">Short Description (Below Poster) *</label>
                                     <textarea
-                                        rows={3}
-                                        placeholder="Brief summary of the event..."
-                                        value={eventForm.shortDescription}
+                                        rows={2}
+                                        required
+                                        placeholder="Short 1–2 line summary displayed below the poster..."
+                                        value={eventForm.shortDescription || ""}
                                         onChange={(e) => setEventForm({ ...eventForm, shortDescription: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-semibold text-slate-700 mb-1">Detailed Description (Shown on Poster Click)</label>
+                                    <textarea
+                                        rows={4}
+                                        placeholder="Full event details, schedule, guidelines, perks, etc. shown when a visitor clicks the poster..."
+                                        value={eventForm.detailedDescription || ""}
+                                        onChange={(e) => setEventForm({ ...eventForm, detailedDescription: e.target.value })}
                                         className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rotaract-navy"
                                     />
                                 </div>
@@ -2339,28 +2519,28 @@ export default function AdminPortalPage() {
                                 <div className="pt-2 flex gap-2">
                                     <button
                                         type="submit"
-                                        className="flex-1 py-3 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
+                                        disabled={isSavingEvent}
+                                        className="flex-1 py-3 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark disabled:bg-slate-400 text-white font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
                                     >
-                                        <CheckCircle2 className="w-4 h-4" />
-                                        <span>{isEditingEvent ? "Update Event" : "Add Event Live"}</span>
+                                        {isSavingEvent ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                <span>Saving...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 className="w-4 h-4" />
+                                                <span>{isEditingEvent ? "Update Event" : "Add Event Live"}</span>
+                                            </>
+                                        )}
                                     </button>
                                     {isEditingEvent && (
                                         <button
                                             type="button"
                                             onClick={() => {
                                                 setIsEditingEvent(false);
-                                                setEventForm({
-                                                    title: "",
-                                                    banner: "/images/events/blood-donation-banner.jpg",
-                                                    date: "",
-                                                    time: "",
-                                                    venue: "",
-                                                    shortDescription: "",
-                                                    spotsLeft: 50,
-                                                    totalSpots: 100,
-                                                    deadline: "",
-                                                    category: "Community Service",
-                                                });
+                                                setEventErrorMsg("");
+                                                setEventForm(DEFAULT_EVENT_FORM);
                                             }}
                                             className="px-3 py-3 rounded-xl bg-slate-200 text-slate-700 font-semibold"
                                         >
@@ -2375,49 +2555,82 @@ export default function AdminPortalPage() {
                         <div className="lg:col-span-2 space-y-4">
                             <h3 className="text-base font-bold font-heading text-rotaract-navy flex items-center justify-between">
                                 <span>Active Portal Events</span>
-                                <span className="text-xs font-normal text-slate-500">Stored dynamically in browser cache</span>
+                                <span className="text-xs font-normal text-slate-500">Synced with Upcoming Events page</span>
                             </h3>
 
-                            <div className="space-y-3">
-                                {eventsList.map((ev) => (
-                                    <div
-                                        key={ev.id}
-                                        className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                                    >
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-rotaract-cranberry uppercase px-2 py-0.5 rounded-md bg-rotaract-cranberry/10">
-                                                    {ev.category}
-                                                </span>
-                                                <span className="text-[10px] font-bold text-slate-700 uppercase px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
-                                                    {ev.audience === "members" ? "🔒 Only Members" : ev.audience === "ri_members" ? "🎖️ Only RI Members" : "🌐 Everyone"}
-                                                </span>
+                            {eventsList.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-xs text-slate-500">
+                                    No upcoming events posted yet. Use the form on the left to publish one.
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {eventsList.map((ev) => (
+                                        <div
+                                            key={ev.id}
+                                            className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                                        >
+                                            <div className="flex items-start gap-4">
+                                                {ev.banner && (
+                                                    <div className="w-14 aspect-[297/420] rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                                                        <img
+                                                            src={ev.banner}
+                                                            alt={ev.title}
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div className="space-y-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-rotaract-cranberry uppercase px-2 py-0.5 rounded-md bg-rotaract-cranberry/10">
+                                                            {ev.category}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-slate-700 uppercase px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
+                                                            {ev.audience === "members" ? "🔒 Only Members" : ev.audience === "ri_members" ? "🎖️ Only RI Members" : "🌐 Everyone"}
+                                                        </span>
+                                                        {ev.registrationLink && (
+                                                            <a
+                                                                href={normalizeFormUrl(ev.registrationLink)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-[10px] font-bold text-emerald-700 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 inline-flex items-center gap-1 hover:bg-emerald-100 transition-colors"
+                                                            >
+                                                                <span>Google Form</span>
+                                                                <ExternalLink className="w-2.5 h-2.5" />
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                    <h4 className="font-bold font-heading text-slate-800 text-base">{ev.title}</h4>
+                                                    <p className="text-xs text-slate-500">
+                                                        📅 {ev.date} • 🕒 {ev.time} • 📍 {ev.venue}
+                                                    </p>
+                                                    {ev.shortDescription && (
+                                                        <p className="text-xs text-slate-500 line-clamp-1">
+                                                            {ev.shortDescription}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <h4 className="font-bold font-heading text-slate-800 text-base">{ev.title}</h4>
-                                            <p className="text-xs text-slate-500">
-                                                📅 {ev.date} • 🕒 {ev.time} • 📍 {ev.venue}
-                                            </p>
-                                        </div>
 
-                                        <div className="flex items-center gap-2 self-end sm:self-center">
-                                            <button
-                                                onClick={() => handleEditEvent(ev)}
-                                                className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors text-xs font-semibold flex items-center gap-1"
-                                            >
-                                                <Edit3 className="w-3.5 h-3.5" />
-                                                <span>Edit</span>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteEvent(ev.id)}
-                                                className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors text-xs font-semibold flex items-center gap-1"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                <span>Delete</span>
-                                            </button>
+                                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                                <button
+                                                    onClick={() => handleEditEvent(ev)}
+                                                    className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors text-xs font-semibold flex items-center gap-1"
+                                                >
+                                                    <Edit3 className="w-3.5 h-3.5" />
+                                                    <span>Edit</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteEvent(ev.id)}
+                                                    className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors text-xs font-semibold flex items-center gap-1"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <span>Delete</span>
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

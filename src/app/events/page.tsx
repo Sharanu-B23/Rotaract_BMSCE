@@ -10,15 +10,15 @@ import {
     MapPin,
     AlertCircle,
     X,
-    CheckCircle2,
     Sparkles,
     ArrowRight,
     Send,
-    Loader2
+    ExternalLink,
+    Eye
 } from "lucide-react";
 import upcomingEventsRaw from "@/data/upcomingEvents.json";
 
-interface UpcomingEvent {
+export interface UpcomingEvent {
     id: string;
     title: string;
     banner: string;
@@ -26,108 +26,81 @@ interface UpcomingEvent {
     time: string;
     venue: string;
     shortDescription: string;
-    spotsLeft: number;
-    totalSpots: number;
+    detailedDescription?: string;
+    registrationLink?: string;
+    spotsLeft?: number;
+    totalSpots?: number;
     deadline: string;
     category: string;
     audience?: "everyone" | "members" | "ri_members";
 }
 
+function normalizeUrl(url: string): string {
+    const trimmed = url.trim();
+    if (!trimmed) return "";
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+}
+
 export default function UpcomingEventsPage() {
     const [eventsList, setEventsList] = useState<UpcomingEvent[]>(upcomingEventsRaw as UpcomingEvent[]);
-    const [activeModalEvent, setActiveModalEvent] = useState<UpcomingEvent | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false);
-    const [errorMessage, setErrorMessage] = useState("");
+    const [selectedEvent, setSelectedEvent] = useState<UpcomingEvent | null>(null);
 
-    // Load admin created/updated events from localStorage on mount
+    // Fetch live events from server API with localStorage fallback
     useEffect(() => {
-        const storedEvents = localStorage.getItem("rotaract_events_data");
-        if (storedEvents) {
+        let isMounted = true;
+
+        async function loadEvents() {
             try {
-                setEventsList(JSON.parse(storedEvents));
+                const res = await fetch("/api/events", { cache: "no-store" });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.events)) {
+                        if (data.source !== "file" || data.events.length > 0) {
+                            if (isMounted) setEventsList(data.events);
+                            return;
+                        }
+                    }
+                }
             } catch (e) {
+                console.warn("Unable to fetch events from API, checking local storage fallback:", e);
+            }
+
+            const storedEvents = localStorage.getItem("rotaract_events_data");
+            if (storedEvents) {
+                try {
+                    const parsed = JSON.parse(storedEvents);
+                    if (Array.isArray(parsed) && isMounted) {
+                        setEventsList(parsed);
+                        return;
+                    }
+                } catch {
+                    // Fallback to bundled JSON
+                }
+            }
+
+            if (isMounted) {
                 setEventsList(upcomingEventsRaw as UpcomingEvent[]);
             }
         }
+
+        loadEvents();
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
-    // Form State
-    const [formData, setFormData] = useState({
-        fullName: "",
-        email: "",
-        phone: "",
-        department: "",
-        academicYear: "1st Year",
-        memberId: "",
-        riMemberId: "",
-    });
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        setErrorMessage("");
-
-        const googleScriptUrl = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
-
-        if (!googleScriptUrl) {
-            console.warn("NEXT_PUBLIC_GOOGLE_SCRIPT_URL variable is missing in .env.local.");
-            setIsSubmitting(false);
-            setIsSubmitted(true);
-            return;
-        }
-
-        try {
-            const payload = {
-                eventTitle: activeModalEvent?.title,
-                audienceEligibility: activeModalEvent?.audience || "everyone",
-                fullName: formData.fullName,
-                email: formData.email,
-                phone: formData.phone,
-                academicYear: formData.academicYear,
-                department: formData.department,
-                memberId: activeModalEvent?.audience === "members" ? formData.memberId : undefined,
-                riMemberId: activeModalEvent?.audience === "ri_members" ? formData.riMemberId : undefined,
-            };
-
-            // Send payload to Google Apps Script Web App
-            await fetch(googleScriptUrl, {
-                method: "POST",
-                mode: "no-cors", // Required for Google Apps Script endpoint
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
-
-            setIsSubmitting(false);
-            setIsSubmitted(true);
-        } catch (error) {
-            console.error("Submission Error:", error);
-            setIsSubmitting(false);
-            setErrorMessage("Unable to process registration. Please try again.");
-        }
-    };
-
-    const closeModal = () => {
-        setActiveModalEvent(null);
-        setIsSubmitted(false);
-        setIsSubmitting(false);
-        setErrorMessage("");
-        setFormData({
-            fullName: "",
-            email: "",
-            phone: "",
-            department: "",
-            academicYear: "1st Year",
-            memberId: "",
-            riMemberId: "",
-        });
-    };
+    // Close modal on Escape key
+    useEffect(() => {
+        if (!selectedEvent) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                setSelectedEvent(null);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedEvent]);
 
     return (
         <div className="w-full min-h-screen bg-rotaract-surface font-body pb-24">
@@ -145,7 +118,7 @@ export default function UpcomingEventsPage() {
                     </h1>
 
                     <p className="max-w-2xl mx-auto text-slate-300 text-sm md:text-base font-light leading-relaxed">
-                        Reserve your spot for our next community drive, workshop, or flagship conference. All events are open to BMSCE students and external youth.
+                        Reserve your spot for our next community drive, workshop, or flagship conference. Click on any event poster to read full details.
                     </p>
                 </div>
             </section>
@@ -154,84 +127,135 @@ export default function UpcomingEventsPage() {
             <main className="max-w-6xl mx-auto px-6 pt-16">
 
                 {eventsList.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                        {eventsList.map((event) => (
+                    <div className="flex flex-wrap justify-center gap-8 items-stretch">
+                        {eventsList.map((event) => {
+                            const posterSrc = event.banner || "/rotaract-logo.png";
+                            const isExternalOrData = posterSrc.startsWith("data:") || posterSrc.startsWith("http");
+                            const formUrl = event.registrationLink ? normalizeUrl(event.registrationLink) : "";
+                            const summaryText = event.shortDescription || event.detailedDescription || "";
+
+                            return (
                                 <div
                                     key={event.id}
-                                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group"
+                                    className="w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.35rem)] max-w-sm bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group"
                                 >
                                     <div>
-                                        {/* Event Banner */}
-                                        <div className="relative w-full h-56 bg-slate-100">
+                                        {/* Event Poster in A3 Ratio (297:420) */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedEvent(event)}
+                                            aria-label={`View full details for ${event.title}`}
+                                            className="relative w-full aspect-[297/420] bg-slate-100 overflow-hidden cursor-pointer group/poster block text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rotaract-navy"
+                                        >
                                             <Image
-                                                src={event.banner}
+                                                src={posterSrc}
                                                 alt={event.title}
                                                 fill
-                                                className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                                sizes="(max-width: 768px) 100vw, 50vw"
+                                                unoptimized={isExternalOrData}
+                                                className="object-contain group-hover/poster:scale-[1.02] transition-transform duration-500"
+                                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px"
                                             />
-                                            <div className="absolute top-3 left-3 flex gap-2">
-                                                <span className="text-[11px] font-semibold bg-rotaract-navy/90 text-white px-3 py-1 rounded-full backdrop-blur-sm">
+                                            <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
+                                                <span className="text-[11px] font-semibold bg-rotaract-navy/90 text-white px-3 py-1 rounded-full backdrop-blur-sm shadow-sm">
                                                     {event.category}
                                                 </span>
                                                 {event.audience === "members" && (
-                                                    <span className="text-[11px] font-semibold bg-amber-500/90 text-white px-3 py-1 rounded-full backdrop-blur-sm">
+                                                    <span className="text-[11px] font-semibold bg-amber-500/90 text-white px-3 py-1 rounded-full backdrop-blur-sm shadow-sm">
                                                         🔒 Members Only
                                                     </span>
                                                 )}
                                                 {event.audience === "ri_members" && (
-                                                    <span className="text-[11px] font-semibold bg-purple-600/90 text-white px-3 py-1 rounded-full backdrop-blur-sm">
+                                                    <span className="text-[11px] font-semibold bg-purple-600/90 text-white px-3 py-1 rounded-full backdrop-blur-sm shadow-sm">
                                                         🎖️ RI Members Only
                                                     </span>
                                                 )}
                                             </div>
-                                        </div>
-
-                                        {/* Event Details */}
-                                        <div className="p-6 space-y-4">
-                                            <div className="space-y-1.5">
-                                                <span className="text-xs font-semibold text-rotaract-cranberry flex items-center gap-1">
-                                                    <AlertCircle className="w-3.5 h-3.5" />
-                                                    {event.deadline}
+                                            <div className="absolute bottom-3 right-3 z-10">
+                                                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-black/65 group-hover/poster:bg-rotaract-navy text-white px-3 py-1.5 rounded-full backdrop-blur-sm shadow-sm transition-colors">
+                                                    <Eye className="w-3.5 h-3.5" />
+                                                    <span>View Details</span>
                                                 </span>
-                                                <h2 className="font-heading font-bold text-2xl text-rotaract-navy group-hover:text-rotaract-cranberry transition-colors">
+                                            </div>
+                                        </button>
+
+                                        {/* Short Event Details Below Poster */}
+                                        <div className="p-6 space-y-3.5">
+                                            <div className="space-y-1.5">
+                                                {event.deadline && (
+                                                    <span className="text-xs font-semibold text-rotaract-cranberry flex items-center gap-1">
+                                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                        <span>{event.deadline}</span>
+                                                    </span>
+                                                )}
+                                                <h2
+                                                    onClick={() => setSelectedEvent(event)}
+                                                    className="font-heading font-bold text-xl text-rotaract-navy group-hover:text-rotaract-cranberry transition-colors cursor-pointer"
+                                                >
                                                     {event.title}
                                                 </h2>
                                             </div>
 
-                                            <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-light">
-                                                {event.shortDescription}
-                                            </p>
+                                            {summaryText && (
+                                                <div className="space-y-1">
+                                                    <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-light line-clamp-3">
+                                                        {summaryText}
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedEvent(event)}
+                                                        className="text-xs font-semibold text-rotaract-navy hover:text-rotaract-cranberry inline-flex items-center gap-1 transition-colors"
+                                                    >
+                                                        <span>Read more</span>
+                                                        <ArrowRight className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            )}
 
-                                            <div className="space-y-2 pt-2 border-t border-slate-100 text-xs md:text-sm text-slate-700 font-medium">
+                                            <div className="space-y-1.5 pt-2.5 border-t border-slate-100 text-xs text-slate-700 font-medium">
                                                 <div className="flex items-center gap-2">
-                                                    <Calendar className="w-4 h-4 text-rotaract-cranberry" />
+                                                    <Calendar className="w-3.5 h-3.5 text-rotaract-cranberry shrink-0" />
                                                     <span>{event.date}</span>
                                                 </div>
+                                                {event.time && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="w-3.5 h-3.5 text-rotaract-cranberry shrink-0" />
+                                                        <span>{event.time}</span>
+                                                    </div>
+                                                )}
                                                 <div className="flex items-center gap-2">
-                                                    <Clock className="w-4 h-4 text-rotaract-cranberry" />
-                                                    <span>{event.time}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <MapPin className="w-4 h-4 text-rotaract-cranberry" />
+                                                    <MapPin className="w-3.5 h-3.5 text-rotaract-cranberry shrink-0" />
                                                     <span>{event.venue}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* CTA Button */}
+                                    {/* CTA Button - Redirects to Google Form */}
                                     <div className="p-6 pt-0">
-                                        <button
-                                            onClick={() => setActiveModalEvent(event)}
-                                            className="w-full py-3.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 text-white font-semibold shadow-md shadow-rotaract-cranberry/20 hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
-                                        >
-                                            <span>Register for Event</span>
-                                            <ArrowRight className="w-4 h-4" />
-                                        </button>
+                                        {formUrl ? (
+                                            <a
+                                                href={formUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="w-full py-3.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 text-white font-semibold shadow-md shadow-rotaract-cranberry/20 hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm"
+                                            >
+                                                <span>Register Here</span>
+                                                <ExternalLink className="w-4 h-4" />
+                                            </a>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedEvent(event)}
+                                                className="w-full py-3.5 rounded-xl bg-rotaract-navy hover:bg-rotaract-dark text-white font-semibold shadow-md transition-all duration-200 flex items-center justify-center gap-2 text-sm"
+                                            >
+                                                <span>View Details</span>
+                                                <ArrowRight className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                            ))}
+                            );
+                        })}
                     </div>
                 ) : (
                     /* ================= EMPTY STATE ================= */
@@ -263,207 +287,127 @@ export default function UpcomingEventsPage() {
 
             </main>
 
-            {/* ================= REGISTRATION MODAL ================= */}
+            {/* ================= DETAILED EVENT VIEW MODAL (ON POSTER CLICK) ================= */}
             <AnimatePresence>
-                {activeModalEvent && (
+                {selectedEvent && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={closeModal}
-                        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+                        onClick={() => setSelectedEvent(null)}
+                        className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
                     >
                         <motion.div
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-3xl overflow-hidden max-w-lg w-full border border-slate-200 shadow-2xl relative my-8"
+                            className="bg-white rounded-3xl overflow-hidden max-w-4xl w-full border border-slate-200 shadow-2xl relative my-4 max-h-[90vh] flex flex-col md:flex-row"
                         >
                             <button
-                                onClick={closeModal}
-                                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                                type="button"
+                                onClick={() => setSelectedEvent(null)}
+                                aria-label="Close event details"
+                                className="absolute top-4 right-4 z-20 p-2 rounded-full bg-slate-100/90 text-slate-700 hover:bg-slate-200 transition-colors shadow-sm"
                             >
                                 <X className="w-5 h-5" />
                             </button>
 
-                            {!isSubmitted ? (
-                                <div className="p-6 sm:p-8 space-y-6">
-                                    <div>
-                                        <span className="text-xs font-bold text-rotaract-cranberry uppercase tracking-wider">
-                                            Event Registration
+                            {/* Left: A3 Poster Display */}
+                            <div className="md:w-[46%] bg-slate-100 flex items-center justify-center p-4 sm:p-6 shrink-0">
+                                <div className="relative w-full max-w-[260px] md:max-w-none aspect-[297/420] rounded-2xl overflow-hidden shadow-md bg-white border border-slate-200/70">
+                                    <Image
+                                        src={selectedEvent.banner || "/rotaract-logo.png"}
+                                        alt={selectedEvent.title}
+                                        fill
+                                        unoptimized={
+                                            (selectedEvent.banner || "").startsWith("data:") ||
+                                            (selectedEvent.banner || "").startsWith("http")
+                                        }
+                                        className="object-contain"
+                                        sizes="(max-width: 768px) 260px, 400px"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Right: Full Event Details & Google Form Link */}
+                            <div className="md:w-[54%] p-6 sm:p-8 flex flex-col justify-between overflow-y-auto space-y-6">
+                                <div className="space-y-4">
+                                    <div className="flex flex-wrap items-center gap-2 pr-8">
+                                        <span className="text-[11px] font-bold bg-rotaract-navy text-white px-3 py-1 rounded-full">
+                                            {selectedEvent.category}
                                         </span>
-                                        <h3 className="text-xl font-bold font-heading text-rotaract-navy mt-1">
-                                            {activeModalEvent.title}
+                                        {selectedEvent.audience === "members" && (
+                                            <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-3 py-1 rounded-full">
+                                                🔒 Members Only
+                                            </span>
+                                        )}
+                                        {selectedEvent.audience === "ri_members" && (
+                                            <span className="text-[11px] font-bold bg-purple-100 text-purple-900 px-3 py-1 rounded-full">
+                                                🎖️ RI Members Only
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-2xl sm:text-3xl font-extrabold font-heading text-rotaract-navy leading-tight">
+                                            {selectedEvent.title}
                                         </h3>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                            {activeModalEvent.date} • {activeModalEvent.venue}
+                                        {selectedEvent.deadline && (
+                                            <p className="text-xs font-semibold text-rotaract-cranberry flex items-center gap-1.5 mt-2">
+                                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                <span>{selectedEvent.deadline}</span>
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-700 font-medium">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="w-4 h-4 text-rotaract-cranberry shrink-0" />
+                                            <span>{selectedEvent.date}</span>
+                                        </div>
+                                        {selectedEvent.time && (
+                                            <div className="flex items-center gap-2">
+                                                <Clock className="w-4 h-4 text-rotaract-cranberry shrink-0" />
+                                                <span>{selectedEvent.time}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-2 sm:col-span-2">
+                                            <MapPin className="w-4 h-4 text-rotaract-cranberry shrink-0" />
+                                            <span>{selectedEvent.venue}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-rotaract-navy">
+                                            About This Event
+                                        </h4>
+                                        <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                                            {selectedEvent.detailedDescription ||
+                                                selectedEvent.shortDescription ||
+                                                "More details will be announced soon."}
                                         </p>
                                     </div>
+                                </div>
 
-                                    {errorMessage && (
-                                        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
-                                            {errorMessage}
+                                <div className="pt-4 border-t border-slate-100">
+                                    {selectedEvent.registrationLink ? (
+                                        <a
+                                            href={normalizeUrl(selectedEvent.registrationLink)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full py-3.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 text-white font-semibold shadow-lg shadow-rotaract-cranberry/20 transition-all text-sm flex items-center justify-center gap-2"
+                                        >
+                                            <span>Register Here</span>
+                                            <ExternalLink className="w-4 h-4" />
+                                        </a>
+                                    ) : (
+                                        <div className="w-full py-3 rounded-xl bg-slate-100 text-slate-500 font-medium text-xs text-center">
+                                            Registration link will be updated soon.
                                         </div>
                                     )}
-
-                                    <form onSubmit={handleSubmit} className="space-y-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                                Full Name *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="fullName"
-                                                required
-                                                placeholder="John Doe"
-                                                value={formData.fullName}
-                                                onChange={handleInputChange}
-                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry text-sm"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                                Email Address *
-                                            </label>
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                required
-                                                placeholder="john@example.com"
-                                                value={formData.email}
-                                                onChange={handleInputChange}
-                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry text-sm"
-                                            />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                                    Phone / WhatsApp *
-                                                </label>
-                                                <input
-                                                    type="tel"
-                                                    name="phone"
-                                                    required
-                                                    placeholder="+91 9876543210"
-                                                    value={formData.phone}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry text-sm"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                                    Academic Year *
-                                                </label>
-                                                <select
-                                                    name="academicYear"
-                                                    value={formData.academicYear}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry text-sm bg-white"
-                                                >
-                                                    <option>1st Year</option>
-                                                    <option>2nd Year</option>
-                                                    <option>3rd Year</option>
-                                                    <option>4th Year</option>
-                                                    <option>External / Alumni</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                                Department / Branch
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="department"
-                                                placeholder="e.g. Computer Science Engineering"
-                                                value={formData.department}
-                                                onChange={handleInputChange}
-                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rotaract-cranberry text-sm"
-                                            />
-                                        </div>
-
-                                        {/* Dynamic Membership ID Field based on Admin Choice */}
-                                        {activeModalEvent.audience === "members" && (
-                                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-1.5">
-                                                <label className="block text-xs font-bold text-amber-900 flex items-center justify-between">
-                                                    <span>Rotaract Membership ID *</span>
-                                                    <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md font-semibold">Required for Members</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="memberId"
-                                                    required
-                                                    placeholder="Enter your Rotaract Membership ID (e.g. ROT-2026-88)"
-                                                    value={formData.memberId}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm bg-white"
-                                                />
-                                            </div>
-                                        )}
-
-                                        {activeModalEvent.audience === "ri_members" && (
-                                            <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl space-y-1.5">
-                                                <label className="block text-xs font-bold text-purple-900 flex items-center justify-between">
-                                                    <span>Rotary International (RI) Membership ID *</span>
-                                                    <span className="text-[10px] bg-purple-200 text-purple-900 px-2 py-0.5 rounded-md font-semibold">Required for RI Members</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="riMemberId"
-                                                    required
-                                                    placeholder="Enter your official RI Membership ID"
-                                                    value={formData.riMemberId}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-white"
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div className="pt-2">
-                                            <button
-                                                type="submit"
-                                                disabled={isSubmitting}
-                                                className="w-full py-3.5 rounded-xl bg-rotaract-cranberry hover:bg-rotaract-cranberry/90 disabled:bg-slate-400 text-white font-semibold shadow-lg shadow-rotaract-cranberry/20 transition-all text-sm flex items-center justify-center gap-2"
-                                            >
-                                                {isSubmitting ? (
-                                                    <>
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                        <span>Saving to Google Sheet...</span>
-                                                    </>
-                                                ) : (
-                                                    <span>Confirm & Reserve Spot</span>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </form>
                                 </div>
-                            ) : (
-                                /* Confirmation Screen */
-                                <div className="p-8 text-center space-y-4">
-                                    <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                                        <CheckCircle2 className="w-10 h-10" />
-                                    </div>
-                                    <h3 className="text-2xl font-bold font-heading text-rotaract-navy">
-                                        You&apos;re Registered!
-                                    </h3>
-                                    <p className="text-slate-600 text-sm leading-relaxed">
-                                        Thank you, <strong className="text-slate-800">{formData.fullName}</strong>. Your entry has been saved under <span className="text-slate-800">{formData.email}</span>.
-                                    </p>
-                                    <div className="pt-4">
-                                        <button
-                                            onClick={closeModal}
-                                            className="px-6 py-2.5 rounded-xl bg-rotaract-navy text-white text-sm font-semibold hover:bg-rotaract-dark transition-colors"
-                                        >
-                                            Done
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
